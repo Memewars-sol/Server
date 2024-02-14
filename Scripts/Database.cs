@@ -7,7 +7,7 @@ using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
-using System.Text.Json;
+using Newtonsoft.Json;
 
 namespace Memewars.RealtimeNetworking.Server
 {
@@ -15,16 +15,29 @@ namespace Memewars.RealtimeNetworking.Server
     {
 
         #region Main Data And Methods
+        private static Credential GetDbCredentials()
+        {
+            using (StreamReader r = new StreamReader("credentials.json"))
+            {
+                string json = r.ReadToEnd();
+                Credential credential = JsonConvert.DeserializeObject<Credential>(json);
+                return credential;
+            }
+        }
 
-        private const string _dbIP = "127.0.0.1";
-        private const string _dbUsername = "postgres";
-        private const string _dbPassword = "";
-        private const string _dbName = "memewars";
+        public class Credential
+        {
+            public string dbIP;
+            public string dbPort { get; set; }
+            public string dbUsername { get; set; }
+            public string dbPassword { get; set; }
+            public string dbName { get; set; }
+        }
 
         public static NpgsqlConnection GetDbConnection()
         {
-
-            var cs = String.Format("Host={0};Port=5432;User ID={1};Password={2};Database={3};", _dbIP, _dbUsername, _dbPassword, _dbName);
+            var credential = GetDbCredentials();
+            var cs = String.Format("Host={0};Port={1};User ID={2};Password={3};Database={4};", credential.dbIP, credential.dbPort, credential.dbUsername, credential.dbPassword, credential.dbName);
             var con = new NpgsqlConnection(cs);
             con.Open();
             return con;
@@ -711,7 +724,8 @@ namespace Memewars.RealtimeNetworking.Server
             public string time;
         }
 
-        private async static Task<(bool, string)> ValidateBazzarPurchaseAsync(string package, string product, string order)
+        // todo
+        /* private async static Task<(bool, string)> ValidateBazzarPurchaseAsync(string package, string product, string order)
         {
             try
             {
@@ -745,7 +759,7 @@ namespace Memewars.RealtimeNetworking.Server
                 Tools.LogError(ex.Message, ex.StackTrace, "IAP");
                 return (false, "0");
             }
-        }
+        } */
 
         public async static void BuyGold(int id, int pack)
         {
@@ -758,6 +772,7 @@ namespace Memewars.RealtimeNetworking.Server
             Sender.TCP_Send(id, packet);
         }
 
+        // todo
         private async static Task<int> BuyGoldAsync(long account_id, int pack)
         {
             Task<int> task = Task.Run(() =>
@@ -772,8 +787,6 @@ namespace Memewars.RealtimeNetworking.Server
             int response = 0;
             using (NpgsqlConnection connection = GetDbConnection())
             {
-
-                
                 connection.Close();
             }
             return response;
