@@ -44,7 +44,7 @@ namespace Memewars.RealtimeNetworking.Server
         public static void UpdateLog(int amount)
         {
             onlinePlayers += amount;
-            Console.Clear();
+            // Console.Clear();
             Console.WriteLine("Online Players: " + onlinePlayers.ToString());
         }
 
@@ -160,7 +160,7 @@ namespace Memewars.RealtimeNetworking.Server
                         Database.CreateClan(clientID, clanName, minTrophies, minHall, pattern, background, patternColor, backgroundColor, joinType);
                         break;
                     case RequestsID.JOINCLAN:
-                        int clan_id = packet.ReadInt();
+                        long clan_id = packet.ReadLong();
                         Database.JoinClan(clientID, clan_id);
                         break;
                     case RequestsID.LEAVECLAN:
