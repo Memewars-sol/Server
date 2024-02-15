@@ -61,7 +61,7 @@ namespace Memewars.RealtimeNetworking.Server
                     {
                         folderPath = folderPath  + folder + "\\";
                     }
-                    string path = folderPath + DateTime.Now.ToString("yyyy-dd-M--HH-mm-ss-ffff") + ".txt";
+                    string path = folderPath + DateTime.Now.ToString("yyyyMMdd-HHmmss-ffff") + ".txt";
                     if (!Directory.Exists(folderPath))
                     {
                         Directory.CreateDirectory(folderPath);

@@ -2023,6 +2023,10 @@ namespace Memewars.RealtimeNetworking.Server
                                 int xp = 0;
                                 if (long.TryParse(reader["account_id"].ToString(), out id) && int.TryParse(reader["gained_xp"].ToString(), out xp) && xp > 0)
                                 {
+                                    if(accounts.ContainsKey(id)) {
+                                        accounts[id] += xp;
+                                        continue;
+                                    }
                                     accounts.Add(id, xp);
                                 }
                             }
@@ -2450,7 +2454,7 @@ namespace Memewars.RealtimeNetworking.Server
                         Sender.TCP_Send(client_id, packet);
                     }
 
-                    string folder = Terminal.dataFolderPath + "Battle\\";
+                    string folder = Terminal.dataFolderPath + "Battle/";
                     string key = Guid.NewGuid().ToString();
                     string path = folder + key + ".txt";
                     if (!Directory.Exists(folder))
@@ -2652,7 +2656,7 @@ namespace Memewars.RealtimeNetworking.Server
                 }
                 connection.Close();
             }
-            string folder = Terminal.dataFolderPath + "Other\\";
+            string folder = Terminal.dataFolderPath + "Other/";
             string key = Guid.NewGuid().ToString();
             string path = folder + key + ".txt";
             if (!Directory.Exists(folder))
@@ -3276,7 +3280,7 @@ namespace Memewars.RealtimeNetworking.Server
 
                         string reportData = Data.Serialize<Data.ClanWarData>(report);
                         string key = Guid.NewGuid().ToString();
-                        string folder = Terminal.dataFolderPath + "Battle\\";
+                        string folder = Terminal.dataFolderPath + "Battle/";
                         string path = folder + key + ".txt";
                         if (!Directory.Exists(folder))
                         {
@@ -4568,7 +4572,7 @@ namespace Memewars.RealtimeNetworking.Server
             long id = 0;
             using (NpgsqlConnection connection = GetDbConnection())
             {
-                string query = String.Format("SELECT id FROM accounts WHERE id <> {0} AND shield < NOW() at time zone 'utc' AND is_online <= 0 ORDER BY RAND() LIMIT 1;", account_id);
+                string query = String.Format("SELECT id FROM accounts WHERE id <> {0} AND shield < NOW() at time zone 'utc' AND is_online <= 0 ORDER BY RANDOM() LIMIT 1;", account_id);
                 using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                 {
                     using (NpgsqlDataReader reader = command.ExecuteReader())
