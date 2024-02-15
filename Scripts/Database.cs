@@ -268,32 +268,32 @@ namespace Memewars.RealtimeNetworking.Server
                     {
                         initializationData.accountID = (long)command.ExecuteScalar();
                     }
-                    query = String.Format("INSERT INTO buildings (global_id, account_id, x_position, y_position, level, track_time, x_war, y_war) VALUES('{0}', {1}, {2}, {3}, 1, NOW() - INTERVAL '1 HOUR', {4}, {5});", Data.BuildingID.townhall.ToString(), initializationData.accountID, 25, 25, 25, 25);
+                    query = String.Format("INSERT INTO buildings (global_id, account_id, x_position, y_position, level, track_time, x_war, y_war) VALUES('{0}', {1}, {2}, {3}, 1, NOW() at time zone 'utc' - INTERVAL '1 HOUR', {4}, {5});", Data.BuildingID.townhall.ToString(), initializationData.accountID, 25, 25, 25, 25);
                     using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                     {
                         command.ExecuteNonQuery();
                     }
-                    query = String.Format("INSERT INTO buildings (global_id, account_id, x_position, y_position, level, track_time, x_war, y_war) VALUES('{0}', {1}, {2}, {3}, 1, NOW() - INTERVAL '1 HOUR', {4}, {5});", Data.BuildingID.goldmine.ToString(), initializationData.accountID, 27, 21, 27, 21);
+                    query = String.Format("INSERT INTO buildings (global_id, account_id, x_position, y_position, level, track_time, x_war, y_war) VALUES('{0}', {1}, {2}, {3}, 1, NOW() at time zone 'utc' - INTERVAL '1 HOUR', {4}, {5});", Data.BuildingID.goldmine.ToString(), initializationData.accountID, 27, 21, 27, 21);
                     using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                     {
                         command.ExecuteNonQuery();
                     }
-                    query = String.Format("INSERT INTO buildings (global_id, account_id, x_position, y_position, level, track_time, x_war, y_war) VALUES('{0}', {1}, {2}, {3}, 1, NOW() - INTERVAL '1 HOUR', {4}, {5});", Data.BuildingID.goldstorage.ToString(), initializationData.accountID, 30, 28, 30, 28);
+                    query = String.Format("INSERT INTO buildings (global_id, account_id, x_position, y_position, level, track_time, x_war, y_war) VALUES('{0}', {1}, {2}, {3}, 1, NOW() at time zone 'utc' - INTERVAL '1 HOUR', {4}, {5});", Data.BuildingID.goldstorage.ToString(), initializationData.accountID, 30, 28, 30, 28);
                     using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                     {
                         command.ExecuteNonQuery();
                     }
-                    query = String.Format("INSERT INTO buildings (global_id, account_id, x_position, y_position, level, track_time, x_war, y_war) VALUES('{0}', {1}, {2}, {3}, 1, NOW() - INTERVAL '1 HOUR', {4}, {5});", Data.BuildingID.elixirmine.ToString(), initializationData.accountID, 21, 27, 21, 27);
+                    query = String.Format("INSERT INTO buildings (global_id, account_id, x_position, y_position, level, track_time, x_war, y_war) VALUES('{0}', {1}, {2}, {3}, 1, NOW() at time zone 'utc' - INTERVAL '1 HOUR', {4}, {5});", Data.BuildingID.elixirmine.ToString(), initializationData.accountID, 21, 27, 21, 27);
                     using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                     {
                         command.ExecuteNonQuery();
                     }
-                    query = String.Format("INSERT INTO buildings (global_id, account_id, x_position, y_position, level, track_time, x_war, y_war) VALUES('{0}', {1}, {2}, {3}, 1, NOW() - INTERVAL '1 HOUR', {4}, {5});", Data.BuildingID.elixirstorage.ToString(), initializationData.accountID, 25, 30, 25, 30);
+                    query = String.Format("INSERT INTO buildings (global_id, account_id, x_position, y_position, level, track_time, x_war, y_war) VALUES('{0}', {1}, {2}, {3}, 1, NOW() at time zone 'utc' - INTERVAL '1 HOUR', {4}, {5});", Data.BuildingID.elixirstorage.ToString(), initializationData.accountID, 25, 30, 25, 30);
                     using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                     {
                         command.ExecuteNonQuery();
                     }
-                    query = String.Format("INSERT INTO buildings (global_id, account_id, x_position, y_position, level, track_time, x_war, y_war) VALUES('{0}', {1}, {2}, {3}, 1, NOW() - INTERVAL '1 HOUR', {4}, {5});", Data.BuildingID.buildershut.ToString(), initializationData.accountID, 22, 24, 22, 24);
+                    query = String.Format("INSERT INTO buildings (global_id, account_id, x_position, y_position, level, track_time, x_war, y_war) VALUES('{0}', {1}, {2}, {3}, 1, NOW() at time zone 'utc' - INTERVAL '1 HOUR', {4}, {5});", Data.BuildingID.buildershut.ToString(), initializationData.accountID, 22, 24, 22, 24);
                     using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                     {
                         command.ExecuteNonQuery();
@@ -305,7 +305,7 @@ namespace Memewars.RealtimeNetworking.Server
                     {
                         int index = rnd.Next(0, xl.Count);
                         int level = rnd.Next(1, 6);
-                        query = String.Format("INSERT INTO buildings (global_id, account_id, x_position, y_position, level, track_time, x_war, y_war) VALUES('{0}', {1}, {2}, {3}, {6}, NOW() - INTERVAL '1 HOUR', {4}, {5});", Data.BuildingID.obstacle.ToString(), initializationData.accountID, xl[index], yl[index], xl[index], yl[index], level);
+                        query = String.Format("INSERT INTO buildings (global_id, account_id, x_position, y_position, level, track_time, x_war, y_war) VALUES('{0}', {1}, {2}, {3}, {6}, NOW() at time zone 'utc' - INTERVAL '1 HOUR', {4}, {5});", Data.BuildingID.obstacle.ToString(), initializationData.accountID, xl[index], yl[index], xl[index], yl[index], level);
                         using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                         {
                             command.ExecuteNonQuery();
@@ -316,7 +316,7 @@ namespace Memewars.RealtimeNetworking.Server
                     AddResources(connection, initializationData.accountID, 10000, 10000, 0, 250);
                 }
                 
-                query = String.Format("UPDATE accounts SET is_online = 1, client_id = {0}, last_login = NOW() WHERE id = {1}", id, initializationData.accountID);
+                query = String.Format("UPDATE accounts SET is_online = 1, client_id = {0}, last_login = NOW() at time zone 'utc' WHERE id = {1}", id, initializationData.accountID);
                 using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                 {
                     command.ExecuteNonQuery();
@@ -410,7 +410,7 @@ namespace Memewars.RealtimeNetworking.Server
             Data.Player data = new Data.Player();
             using (NpgsqlConnection connection = GetDbConnection())
             {
-                string query = String.Format("SELECT id, name, gems, trophies, banned, shield, level, xp, clan_join_timer, clan_id, clan_rank, war_id, NOW() AS now_time, email, map_layout, shld_cldn_1, shld_cldn_2, shld_cldn_3 FROM accounts WHERE id = {0};", id);
+                string query = String.Format("SELECT id, name, gems, trophies, banned, shield, level, xp, clan_join_timer, clan_id, clan_rank, war_id, NOW() at time zone 'utc' AS now_time, email, map_layout, shld_cldn_1, shld_cldn_2, shld_cldn_3 FROM accounts WHERE id = {0};", id);
                 using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                 {
                     using (NpgsqlDataReader reader = command.ExecuteReader())
@@ -547,7 +547,7 @@ namespace Memewars.RealtimeNetworking.Server
                 int cooldown2 = 0;
                 int cooldown3 = 0;
                 int gems = 0;
-                string query = String.Format("SELECT gems, CASE WHEN shld_cldn_1 <= NOW() THEN 1 ELSE 0 END AS cd1, CASE WHEN shld_cldn_2 <= NOW() THEN 1 ELSE 0 END AS cd2, CASE WHEN shld_cldn_3 <= NOW() THEN 1 ELSE 0 END AS cd3 FROM accounts WHERE id = {0};", account_id);
+                string query = String.Format("SELECT gems, CASE WHEN shld_cldn_1 <= NOW() at time zone 'utc' THEN 1 ELSE 0 END AS cd1, CASE WHEN shld_cldn_2 <= NOW() at time zone 'utc' THEN 1 ELSE 0 END AS cd2, CASE WHEN shld_cldn_3 <= NOW() at time zone 'utc' THEN 1 ELSE 0 END AS cd3 FROM accounts WHERE id = {0};", account_id);
                 bool ok = false;
                 using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                 {
@@ -586,17 +586,17 @@ namespace Memewars.RealtimeNetworking.Server
                                 switch (pack)
                                 {
                                     case 1:
-                                        query = String.Format("UPDATE accounts SET shld_cldn_1 = NOW() + INTERVAL '23 HOUR' WHERE id = {0};", account_id);
+                                        query = String.Format("UPDATE accounts SET shld_cldn_1 = NOW() at time zone 'utc' + INTERVAL '23 HOUR' WHERE id = {0};", account_id);
                                         using (NpgsqlCommand command = new NpgsqlCommand(query, connection)) { command.ExecuteNonQuery(); }
                                         AddShield(connection, account_id, 23 * 60 * 60);
                                         break;
                                     case 2:
-                                        query = String.Format("UPDATE accounts SET shld_cldn_2 = NOW() + INTERVAL '5 DAY' WHERE id = {0};", account_id);
+                                        query = String.Format("UPDATE accounts SET shld_cldn_2 = NOW() at time zone 'utc' + INTERVAL '5 DAY' WHERE id = {0};", account_id);
                                         using (NpgsqlCommand command = new NpgsqlCommand(query, connection)) { command.ExecuteNonQuery(); }
                                         AddShield(connection, account_id, 5 * 24 * 60 * 60);
                                         break;
                                     case 3:
-                                        query = String.Format("UPDATE accounts SET shld_cldn_3 = NOW() + INTERVAL '35 DAY' WHERE id = {0};", account_id);
+                                        query = String.Format("UPDATE accounts SET shld_cldn_3 = NOW() at time zone 'utc' + INTERVAL '35 DAY' WHERE id = {0};", account_id);
                                         using (NpgsqlCommand command = new NpgsqlCommand(query, connection)) { command.ExecuteNonQuery(); }
                                         AddShield(connection, account_id, 35 * 24 * 60 * 60);
                                         break;
@@ -1436,7 +1436,7 @@ namespace Memewars.RealtimeNetworking.Server
         {
             if (seconds <= 0) { return false; }
             bool haveShield = false;
-            string query = String.Format("SELECT shield FROM accounts WHERE id = {0} AND shield > NOW()", account_id);
+            string query = String.Format("SELECT shield FROM accounts WHERE id = {0} AND shield > NOW() at time zone 'utc'", account_id);
             using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
             {
                 using (NpgsqlDataReader reader = command.ExecuteReader())
@@ -1453,7 +1453,7 @@ namespace Memewars.RealtimeNetworking.Server
             }
             else
             {
-                query = String.Format("UPDATE accounts SET shield = NOW() + INTERVAL '{0} SECOND' WHERE id = {1};", seconds, account_id);
+                query = String.Format("UPDATE accounts SET shield = NOW() at time zone 'utc' + INTERVAL '{0} SECOND' WHERE id = {1};", seconds, account_id);
             }
             using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
             {
@@ -1481,7 +1481,7 @@ namespace Memewars.RealtimeNetworking.Server
 
         private static bool RemoveShield(NpgsqlConnection connection, long account_id)
         {
-            string query = String.Format("UPDATE accounts SET shield = NOW() - INTERVAL '1 SECOND' WHERE id = {0};", account_id);
+            string query = String.Format("UPDATE accounts SET shield = NOW() at time zone 'utc' - INTERVAL '1 SECOND' WHERE id = {0};", account_id);
             using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
             {
                 command.ExecuteNonQuery();
@@ -1523,7 +1523,7 @@ namespace Memewars.RealtimeNetworking.Server
             {
                 Data.Building building = null;
                 DateTime now = DateTime.Now;
-                string query = String.Format("SELECT level, global_id, boost, NOW() as now FROM buildings WHERE id = {0} AND account_id = {1};", building_id, account_id);
+                string query = String.Format("SELECT level, global_id, boost, NOW() at time zone 'utc' as now FROM buildings WHERE id = {0} AND account_id = {1};", building_id, account_id);
                 using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                 {
                     using (NpgsqlDataReader reader = command.ExecuteReader())
@@ -1552,7 +1552,7 @@ namespace Memewars.RealtimeNetworking.Server
                         }
                         else
                         {
-                            query = String.Format("UPDATE buildings SET boost = NOW() + INTERVAL '24 HOUR' WHERE id = {0}", building_id);
+                            query = String.Format("UPDATE buildings SET boost = NOW() at time zone 'utc' + INTERVAL '24 HOUR' WHERE id = {0}", building_id);
                         }
                         using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                         {
@@ -1794,50 +1794,74 @@ namespace Memewars.RealtimeNetworking.Server
             return await task;
         }
 
+        private static void _UpdateBuildings(NpgsqlConnection connection, double deltaTime, Data.BuildingID buildingId)
+        {
+            string storage_type = "";
+            switch(buildingId) {
+                case Data.BuildingID.goldmine:
+                    storage_type = "gold";
+                    break;
+                case Data.BuildingID.elixirmine:
+                    storage_type = "elixir";
+                    break;
+                case Data.BuildingID.darkelixirmine:
+                    storage_type = "dark_elixir";
+                    break;
+            }
+
+            if(storage_type == "") {
+                throw new Exception("Unknown type");
+            }
+
+            string query = String.Format(@"
+                UPDATE buildings 
+                SET {0}_storage = {0}_storage + (server_buildings.speed * {1} * CASE WHEN boost >= NOW() at time zone 'utc' THEN 2 ELSE 1 END) 
+                FROM server_buildings 
+                WHERE buildings.global_id = server_buildings.global_id 
+                AND buildings.level = server_buildings.level 
+                AND buildings.global_id = '{2}' AND buildings.level > 0", 
+                storage_type,
+                deltaTime / 3600d, 
+                buildingId.ToString()
+            );
+
+            using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
+            {
+                command.ExecuteNonQuery();
+            }
+
+
+            // Limit Gold
+            query = String.Format(@"
+                UPDATE buildings 
+                SET {0}_storage = server_buildings.{0}_capacity 
+                FROM server_buildings
+                WHERE buildings.gold_storage > server_buildings.gold_capacity 
+                    AND buildings.global_id = '{1}' 
+                    AND buildings.level > 0
+                    AND buildings.global_id = server_buildings.global_id
+                    AND buildings.level = server_buildings.level", 
+                    storage_type,
+                    Data.BuildingID.goldmine.ToString()
+                );
+            using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
+            {
+                command.ExecuteNonQuery();
+            }
+        }
+
         private static bool _UpdateCollectabesAsync(double deltaTime)
         {
             using (NpgsqlConnection connection = GetDbConnection())
             {
-                // Add Gold
-                string query = String.Format("UPDATE buildings LEFT JOIN server_buildings ON buildings.global_id = server_buildings.global_id AND buildings.level = server_buildings.level SET buildings.gold_storage = buildings.gold_storage + (server_buildings.speed * {0} * CASE WHEN buildings.boost >= NOW() THEN 2 ELSE 1 END) WHERE buildings.global_id = '{1}' AND buildings.level > 0", deltaTime / 3600d, Data.BuildingID.goldmine.ToString());
-                using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                {
-                    command.ExecuteNonQuery();
+                try {
+                    _UpdateBuildings(connection, deltaTime, Data.BuildingID.goldmine);
+                    _UpdateBuildings(connection, deltaTime, Data.BuildingID.elixirmine);
+                    _UpdateBuildings(connection, deltaTime, Data.BuildingID.darkelixirmine);
                 }
 
-                // Add Elixir
-                query = String.Format("UPDATE buildings LEFT JOIN server_buildings ON buildings.global_id = server_buildings.global_id AND buildings.level = server_buildings.level SET buildings.elixir_storage = buildings.elixir_storage + (server_buildings.speed * {0} * CASE WHEN buildings.boost >= NOW() THEN 2 ELSE 1 END) WHERE buildings.global_id = '{1}' AND buildings.level > 0", deltaTime / 3600d, Data.BuildingID.elixirmine.ToString());
-                using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                {
-                    command.ExecuteNonQuery();
-                }
-
-                // Add Dark Elixir
-                query = String.Format("UPDATE buildings LEFT JOIN server_buildings ON buildings.global_id = server_buildings.global_id AND buildings.level = server_buildings.level SET buildings.dark_elixir_storage = buildings.dark_elixir_storage + (server_buildings.speed * {0} * CASE WHEN buildings.boost >= NOW() THEN 2 ELSE 1 END) WHERE buildings.global_id = '{1}' AND buildings.level > 0", deltaTime / 3600d, Data.BuildingID.darkelixirmine.ToString());
-                using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                {
-                    command.ExecuteNonQuery();
-                }
-
-                // Limit Gold
-                query = String.Format("UPDATE buildings LEFT JOIN server_buildings ON buildings.global_id = server_buildings.global_id AND buildings.level = server_buildings.level SET buildings.gold_storage = server_buildings.gold_capacity WHERE buildings.gold_storage > server_buildings.gold_capacity AND buildings.global_id = '{0}' And buildings.level > 0", Data.BuildingID.goldmine.ToString());
-                using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                {
-                    command.ExecuteNonQuery();
-                }
-
-                // Limit Elixir
-                query = String.Format("UPDATE buildings LEFT JOIN server_buildings ON buildings.global_id = server_buildings.global_id AND buildings.level = server_buildings.level SET buildings.elixir_storage = server_buildings.elixir_capacity WHERE buildings.elixir_storage > server_buildings.elixir_capacity AND buildings.global_id = '{0}' And buildings.level > 0", Data.BuildingID.elixirmine.ToString());
-                using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                {
-                    command.ExecuteNonQuery();
-                }
-
-                // Limit Dark Elixir
-                query = String.Format("UPDATE buildings LEFT JOIN server_buildings ON buildings.global_id = server_buildings.global_id AND buildings.level = server_buildings.level SET buildings.dark_elixir_storage = server_buildings.dark_elixir_capacity WHERE buildings.dark_elixir_storage > server_buildings.dark_elixir_capacity AND buildings.global_id = '{0}' And buildings.level > 0", Data.BuildingID.darkelixirmine.ToString());
-                using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                {
-                    command.ExecuteNonQuery();
+                catch(Exception exception) {
+                    Console.WriteLine(exception.ToString());
                 }
                 connection.Close();
             }
@@ -1955,86 +1979,155 @@ namespace Memewars.RealtimeNetworking.Server
 
         private static void GeneralUpdateBuildings(NpgsqlConnection connection)
         {
-            string time = "";
-            string query = String.Format("SELECT NOW() AS time");
-            using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-            {
-                using (NpgsqlDataReader reader = command.ExecuteReader())
+            try {
+                string time = "";
+                string query = String.Format("SELECT NOW() at time zone 'utc' AS time");
+                using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                 {
-                    if (reader.HasRows)
+                    using (NpgsqlDataReader reader = command.ExecuteReader())
                     {
-                        while (reader.Read())
+                        if (reader.HasRows)
                         {
-                            time = DateTime.Parse(reader["time"].ToString()).ToString("yyyy-MM-dd H:mm:ss");
-                        }
-                    }
-                }
-            }
-
-            query = String.Format("DELETE FROM buildings WHERE is_constructing > 0 AND construction_time <= NOW() AND global_id = '{0}'", Data.BuildingID.obstacle.ToString());
-            using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-            {
-                command.ExecuteNonQuery();
-            }
-
-            query = String.Format("UPDATE buildings SET level = level + 1, is_constructing = 0, track_time = '{0}' WHERE is_constructing > 0 AND construction_time <= NOW() AND global_id <> '{1}'", time, Data.BuildingID.obstacle.ToString());
-            using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-            {
-                command.ExecuteNonQuery();
-            }
-
-            Dictionary<long, int> accounts = new Dictionary<long, int>();
-
-            query = String.Format("SELECT buildings.account_id, server_buildings.gained_xp FROM buildings LEFT JOIN server_buildings ON buildings.global_id = server_buildings.global_id AND buildings.level = server_buildings.level WHERE buildings.track_time = '{0}'", time);
-            using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-            {
-                using (NpgsqlDataReader reader = command.ExecuteReader())
-                {
-                    if (reader.HasRows)
-                    {
-                        while (reader.Read())
-                        {
-                            long id = 0;
-                            int xp = 0;
-                            if (long.TryParse(reader["account_id"].ToString(), out id) && int.TryParse(reader["gained_xp"].ToString(), out xp) && xp > 0)
+                            while (reader.Read())
                             {
-                                accounts.Add(id, xp);
+                                time = DateTime.Parse(reader["time"].ToString()).ToString("yyyy-MM-dd H:mm:ss");
                             }
                         }
                     }
                 }
-            }
 
-            query = String.Format("UPDATE buildings SET track_time = track_time - INTERVAL '1 HOUR' WHERE track_time = '{0}'", time);
-            using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-            {
-                command.ExecuteNonQuery();
-            }
-
-            if (accounts.Count > 0)
-            {
-                foreach (var account in accounts)
+                query = String.Format("DELETE FROM buildings WHERE is_constructing > 0 AND construction_time <= NOW() at time zone 'utc' AND global_id = '{0}'", Data.BuildingID.obstacle.ToString());
+                using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                 {
-                    AddXP(connection, account.Key, account.Value);
+                    command.ExecuteNonQuery();
                 }
+
+                query = String.Format("UPDATE buildings SET level = level + 1, is_constructing = 0, track_time = '{0}' WHERE is_constructing > 0 AND construction_time <= NOW() at time zone 'utc' AND global_id <> '{1}'", time, Data.BuildingID.obstacle.ToString());
+                using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
+                {
+                    command.ExecuteNonQuery();
+                }
+
+                Dictionary<long, int> accounts = new Dictionary<long, int>();
+
+                query = String.Format("SELECT buildings.account_id, server_buildings.gained_xp FROM buildings LEFT JOIN server_buildings ON buildings.global_id = server_buildings.global_id AND buildings.level = server_buildings.level WHERE buildings.track_time = '{0}'", time);
+                using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
+                {
+                    using (NpgsqlDataReader reader = command.ExecuteReader())
+                    {
+                        if (reader.HasRows)
+                        {
+                            while (reader.Read())
+                            {
+                                long id = 0;
+                                int xp = 0;
+                                if (long.TryParse(reader["account_id"].ToString(), out id) && int.TryParse(reader["gained_xp"].ToString(), out xp) && xp > 0)
+                                {
+                                    accounts.Add(id, xp);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                query = String.Format("UPDATE buildings SET track_time = track_time - INTERVAL '1 HOUR' WHERE track_time = '{0}'", time);
+
+                using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
+                {
+                    command.ExecuteNonQuery();
+                }
+
+                if (accounts.Count > 0)
+                {
+                    foreach (var account in accounts)
+                    {
+                        AddXP(connection, account.Key, account.Value);
+                    }
+                }
+            }
+
+            catch(Exception exception) {
+                Console.WriteLine(exception.ToString());
             }
         }
 
         private static void GeneralUpdateUnitTraining(NpgsqlConnection connection, float deltaTime)
         {
-            string query = String.Format("UPDATE units LEFT JOIN server_units ON units.global_id = server_units.global_id AND units.level = server_units.level SET trained = 1 WHERE units.trained_time >= server_units.train_time");
+            string query = String.Format(@"UPDATE units 
+                                            SET trained = 1 
+                                            FROM server_units
+                                            WHERE units.trained_time >= server_units.train_time
+                                            AND units.global_id = server_units.global_id 
+                                            AND units.level = server_units.level ");
             using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
             {
                 command.ExecuteNonQuery();
             }
 
-            query = String.Format("UPDATE units AS t1 INNER JOIN (SELECT units.id FROM units LEFT JOIN server_units ON units.global_id = server_units.global_id AND units.level = server_units.level WHERE units.trained <= 0 AND units.trained_time < server_units.train_time GROUP BY units.account_id) t2 ON t1.id = t2.id SET trained_time = trained_time + {0}", deltaTime);
+            query = String.Format(@"UPDATE units AS t1 
+                                    SET trained_time = trained_time + {0}
+                                    FROM (
+										/* only train the earliest unit */
+                                        SELECT
+											units.account_id,
+											MIN(units.id) as unit_id
+                                        FROM units 
+                                        LEFT JOIN server_units 
+                                        ON units.global_id = server_units.global_id 
+                                        AND units.level = server_units.level 
+                                        WHERE units.trained <= 0 
+                                        AND units.trained_time < server_units.train_time 
+                                        GROUP BY units.account_id
+                                    ) t2
+                                    WHERE t1.id = t2.unit_id", deltaTime);
+
             using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
             {
                 command.ExecuteNonQuery();
             }
 
-            query = String.Format("UPDATE units AS t1 INNER JOIN (SELECT units.id, (IFNULL(buildings.capacity, 0) - IFNULL(t.occupied, 0)) AS capacity, server_units.housing FROM units LEFT JOIN server_units ON units.global_id = server_units.global_id AND units.level = server_units.level LEFT JOIN (SELECT buildings.account_id, SUM(server_buildings.capacity) AS capacity FROM buildings LEFT JOIN server_buildings ON buildings.global_id = server_buildings.global_id AND buildings.level = server_buildings.level WHERE buildings.global_id = 'armycamp' AND buildings.level > 0 GROUP BY buildings.account_id) AS buildings ON units.account_id = buildings.account_id LEFT JOIN (SELECT units.account_id, SUM(server_units.housing) AS occupied FROM units LEFT JOIN server_units ON units.global_id = server_units.global_id AND units.level = server_units.level WHERE units.ready > 0 GROUP BY units.account_id) AS t ON units.account_id = t.account_id WHERE units.trained > 0 AND units.ready <= 0 GROUP BY units.account_id) t2 ON t1.id = t2.id SET ready = 1 WHERE housing <= capacity");
+            query = String.Format(@"UPDATE units AS t1 
+                                    SET ready = 1
+                                    FROM (
+                                        SELECT 
+                                            units.id, 
+											units.trained,
+                                            (CASE WHEN buildings.capacity is null THEN 0 ELSE buildings.capacity END) - (CASE WHEN t.occupied is null THEN 0 ELSE t.occupied END) AS capacity, 
+                                            server_units.housing 
+                                        FROM units 
+                                        LEFT JOIN server_units 
+                                            ON units.global_id = server_units.global_id 
+                                            AND units.level = server_units.level 
+                                        LEFT JOIN (
+                                            SELECT buildings.account_id, 
+                                            SUM(server_buildings.capacity) AS capacity 
+                                            FROM buildings 
+                                            LEFT JOIN server_buildings 
+                                            ON buildings.global_id = server_buildings.global_id 
+                                            AND buildings.level = server_buildings.level 
+                                            WHERE buildings.global_id = 'armycamp' 
+                                            AND buildings.level > 0 
+                                            GROUP BY buildings.account_id
+                                        ) AS buildings 
+                                        ON units.account_id = buildings.account_id 
+                                        LEFT JOIN (
+                                            SELECT units.account_id, 
+                                            SUM(server_units.housing) AS occupied 
+                                            FROM units 
+                                            LEFT JOIN server_units 
+                                            ON units.global_id = server_units.global_id 
+                                            AND units.level = server_units.level 
+                                            WHERE units.ready > 0 
+                                            GROUP BY units.account_id
+                                        ) AS t 
+                                        ON units.account_id = t.account_id 
+                                        WHERE units.trained > 0 
+										AND units.ready <= 0 
+                                        GROUP BY units.account_id, units.id, buildings.capacity, t.occupied, server_units.housing
+                                    ) t2 
+                                    WHERE t1.id = t2.id 
+                                    AND housing <= capacity
+									AND t1.trained > 0");
             using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
             {
                 command.ExecuteNonQuery();
@@ -2043,25 +2136,127 @@ namespace Memewars.RealtimeNetworking.Server
 
         private static void GeneralUpdateSpellBrewing(NpgsqlConnection connection, float deltaTime)
         {
-            string query = String.Format("UPDATE spells LEFT JOIN server_spells ON spells.global_id = server_spells.global_id AND spells.level = server_spells.level SET brewed = 1 WHERE spells.brewed_time >= server_spells.brew_time");
+            string query = String.Format(@"UPDATE spells 
+                                            SET brewed = 1
+                                        FROM server_spells 
+                                        WHERE spells.global_id = server_spells.global_id 
+                                        AND spells.level = server_spells.level 
+                                        AND spells.brewed_time >= server_spells.brew_time");
             using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
             {
                 command.ExecuteNonQuery();
             }
 
-            query = String.Format("UPDATE spells AS t1 INNER JOIN (SELECT spells.id FROM spells LEFT JOIN server_spells ON spells.global_id = server_spells.global_id AND spells.level = server_spells.level WHERE spells.brewed <= 0 AND spells.brewed_time < server_spells.brew_time GROUP BY spells.account_id) t2 ON t1.id = t2.id SET brewed_time = brewed_time + {0}", deltaTime);
+            query = String.Format(@"UPDATE spells AS t1 
+                                    SET brewed_time = brewed_time + {0}
+                                    FROM (
+                                        SELECT spells.id 
+                                        FROM spells 
+                                        LEFT JOIN server_spells 
+                                        ON spells.global_id = server_spells.global_id 
+                                        AND spells.level = server_spells.level 
+                                        WHERE spells.brewed <= 0 
+                                        AND spells.brewed_time < server_spells.brew_time 
+                                        GROUP BY spells.id
+                                    ) t2 
+                                    WHERE t1.id = t2.id ", deltaTime);
             using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
             {
                 command.ExecuteNonQuery();
             }
 
-            query = String.Format("UPDATE spells AS t1 INNER JOIN (SELECT spells.id, (IFNULL(buildings.capacity, 0) - IFNULL(t.occupied, 0)) AS capacity, server_spells.housing, server_spells.building_code FROM spells LEFT JOIN server_spells ON spells.global_id = server_spells.global_id AND spells.level = server_spells.level LEFT JOIN (SELECT buildings.account_id, SUM(server_buildings.capacity) AS capacity FROM buildings LEFT JOIN server_buildings ON buildings.global_id = server_buildings.global_id AND buildings.level = server_buildings.level WHERE buildings.global_id = '{0}' AND buildings.level > 0 GROUP BY buildings.account_id) AS buildings ON spells.account_id = buildings.account_id LEFT JOIN (SELECT spells.account_id, SUM(server_spells.housing) AS occupied FROM spells LEFT JOIN server_spells ON spells.global_id = server_spells.global_id AND spells.level = server_spells.level WHERE spells.ready > 0 AND server_spells.building_code = {1} GROUP BY spells.account_id) AS t ON spells.account_id = t.account_id WHERE spells.brewed > 0 AND spells.ready <= 0 GROUP BY spells.account_id) t2 ON t1.id = t2.id SET ready = 1 WHERE housing <= capacity AND building_code = {1}", Data.BuildingID.spellfactory.ToString(), 0);
+            query = String.Format(@"UPDATE spells AS t1
+                                    SET ready = 1
+                                    FROM (
+                                        SELECT 
+                                            spells.id, 
+                                            (CASE WHEN buildings.capacity is null then 0 else buildings.capacity end) - (case when t.occupied is null then 0 else t.occupied end) AS capacity, 
+                                            server_spells.housing, 
+                                            server_spells.building_code 
+                                        FROM spells 
+                                        LEFT JOIN server_spells 
+                                        ON spells.global_id = server_spells.global_id 
+                                        AND spells.level = server_spells.level
+                                        LEFT JOIN (
+                                            SELECT buildings.account_id, 
+                                            SUM(server_buildings.capacity) AS capacity 
+                                            FROM buildings 
+                                            LEFT JOIN server_buildings 
+                                            ON buildings.global_id = server_buildings.global_id 
+                                            AND buildings.level = server_buildings.level 
+                                            WHERE buildings.global_id = '{0}' 
+                                                AND buildings.level > 0 
+                                            GROUP BY buildings.account_id
+                                        ) AS buildings 
+                                        ON spells.account_id = buildings.account_id 
+                                        LEFT JOIN (
+                                            SELECT spells.account_id, 
+                                            SUM(server_spells.housing) AS occupied 
+                                        FROM spells 
+                                        LEFT JOIN server_spells 
+                                            ON spells.global_id = server_spells.global_id 
+                                            AND spells.level = server_spells.level 
+                                        WHERE spells.ready > 0 
+                                            AND server_spells.building_code = {1}
+                                        GROUP BY spells.account_id
+                                        ) AS t 
+                                        ON spells.account_id = t.account_id 
+                                            AND spells.brewed > 0 
+                                            AND spells.ready <= 0 
+                                        GROUP BY spells.id, buildings.capacity, t.occupied, server_spells.housing, server_spells.building_code
+                                    ) t2 
+                                    WHERE t1.id = t2.id  
+                                    AND housing <= capacity 
+                                    AND building_code = {1}", Data.BuildingID.spellfactory.ToString(), 0);
             using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
             {
                 command.ExecuteNonQuery();
             }
 
-            query = String.Format("UPDATE spells AS t1 INNER JOIN (SELECT spells.id, (IFNULL(buildings.capacity, 0) - IFNULL(t.occupied, 0)) AS capacity, server_spells.housing, server_spells.building_code FROM spells LEFT JOIN server_spells ON spells.global_id = server_spells.global_id AND spells.level = server_spells.level LEFT JOIN (SELECT buildings.account_id, SUM(server_buildings.capacity) AS capacity FROM buildings LEFT JOIN server_buildings ON buildings.global_id = server_buildings.global_id AND buildings.level = server_buildings.level WHERE buildings.global_id = '{0}' AND buildings.level > 0 GROUP BY buildings.account_id) AS buildings ON spells.account_id = buildings.account_id LEFT JOIN (SELECT spells.account_id, SUM(server_spells.housing) AS occupied FROM spells LEFT JOIN server_spells ON spells.global_id = server_spells.global_id AND spells.level = server_spells.level WHERE spells.ready > 0 AND server_spells.building_code = {1} GROUP BY spells.account_id) AS t ON spells.account_id = t.account_id WHERE spells.brewed > 0 AND spells.ready <= 0 GROUP BY spells.account_id) t2 ON t1.id = t2.id SET ready = 1 WHERE housing <= capacity AND building_code = {1}", Data.BuildingID.darkspellfactory.ToString(), 1);
+            query = String.Format(@"UPDATE spells AS t1
+                                    SET ready = 1
+                                    FROM (
+                                        SELECT 
+                                            spells.id, 
+                                            (CASE WHEN buildings.capacity is null then 0 else buildings.capacity end) - (case when t.occupied is null then 0 else t.occupied end) AS capacity, 
+                                            server_spells.housing, 
+                                            server_spells.building_code 
+                                        FROM spells 
+                                        LEFT JOIN server_spells 
+                                        ON spells.global_id = server_spells.global_id 
+                                        AND spells.level = server_spells.level
+                                        LEFT JOIN (
+                                            SELECT buildings.account_id, 
+                                            SUM(server_buildings.capacity) AS capacity 
+                                            FROM buildings 
+                                            LEFT JOIN server_buildings 
+                                            ON buildings.global_id = server_buildings.global_id 
+                                            AND buildings.level = server_buildings.level 
+                                            WHERE buildings.global_id = '{0}' 
+                                                AND buildings.level > 0 
+                                            GROUP BY buildings.account_id
+                                        ) AS buildings 
+                                        ON spells.account_id = buildings.account_id 
+                                        LEFT JOIN (
+                                            SELECT spells.account_id, 
+                                            SUM(server_spells.housing) AS occupied 
+                                        FROM spells 
+                                        LEFT JOIN server_spells 
+                                            ON spells.global_id = server_spells.global_id 
+                                            AND spells.level = server_spells.level 
+                                        WHERE spells.ready > 0 
+                                            AND server_spells.building_code = {1}
+                                        GROUP BY spells.account_id
+                                        ) AS t 
+                                        ON spells.account_id = t.account_id 
+                                            AND spells.brewed > 0 
+                                            AND spells.ready <= 0 
+                                        GROUP BY spells.id, buildings.capacity, t.occupied, server_spells.housing, server_spells.building_code
+                                    ) t2 
+                                    WHERE t1.id = t2.id  
+                                    AND housing <= capacity 
+                                    AND building_code = {1}", Data.BuildingID.darkspellfactory.ToString(), 1);
+
             using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
             {
                 command.ExecuteNonQuery();
@@ -2291,7 +2486,7 @@ namespace Memewars.RealtimeNetworking.Server
                         }
                         if (trophies > 0 && Data.shieldMinutesAmountToBattleLost > 0)
                         {
-                            query = String.Format("UPDATE accounts SET shield = NOW() + INTERVAL '{0} MINUTE' WHERE id = {1} AND shield < NOW();", Data.shieldMinutesAmountToBattleLost, defender_id);
+                            query = String.Format("UPDATE accounts SET shield = NOW() at time zone 'utc' + INTERVAL '{0} MINUTE' WHERE id = {1} AND shield < NOW() at time zone 'utc';", Data.shieldMinutesAmountToBattleLost, defender_id);
                             using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                             {
                                 command.ExecuteNonQuery();
@@ -2323,7 +2518,7 @@ namespace Memewars.RealtimeNetworking.Server
             int count = 0;
             using (NpgsqlConnection connection = GetDbConnection())
             {
-                string query = String.Format("SELECT COUNT(id) AS count FROM accounts WHERE last_login + INTERVAL '24 HOUR' <= NOW();");
+                string query = String.Format("SELECT COUNT(id) AS count FROM accounts WHERE last_login + INTERVAL '24 HOUR' <= NOW() at time zone 'utc';");
                 using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                 {
                     using (NpgsqlDataReader reader = command.ExecuteReader())
@@ -2346,7 +2541,7 @@ namespace Memewars.RealtimeNetworking.Server
                     for (int i = 0; i < sets; i++)
                     {
                         List<long> accounts = new List<long>();
-                        query = String.Format("SELECT id FROM accounts WHERE last_login + INTERVAL '24 HOUR' <= NOW() LIMIT {0} OFFSET {1};", batch, i * batch);
+                        query = String.Format("SELECT id FROM accounts WHERE last_login + INTERVAL '24 HOUR' <= NOW() at time zone 'utc' LIMIT {0} OFFSET {1};", batch, i * batch);
                         using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                         {
                             using (NpgsqlDataReader reader = command.ExecuteReader())
@@ -2444,7 +2639,7 @@ namespace Memewars.RealtimeNetworking.Server
                             }
                             if (finalX >= 0 && finalY >= 0)
                             {
-                                query = String.Format("INSERT INTO buildings (global_id, account_id, x_position, y_position, level, track_time, x_war, y_war) VALUES('{0}', {1}, {2}, {3}, {4}, NOW() - INTERVAL '1 HOUR', {5}, {6});", Data.BuildingID.obstacle.ToString(), accounts[j], finalX, finalY, rnd.Next(1, 6), finalX, finalY);
+                                query = String.Format("INSERT INTO buildings (global_id, account_id, x_position, y_position, level, track_time, x_war, y_war) VALUES('{0}', {1}, {2}, {3}, {4}, NOW() at time zone 'utc' - INTERVAL '1 HOUR', {5}, {6});", Data.BuildingID.obstacle.ToString(), accounts[j], finalX, finalY, rnd.Next(1, 6), finalX, finalY);
                                 using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                                 {
                                     command.ExecuteNonQuery();
@@ -2869,7 +3064,7 @@ namespace Memewars.RealtimeNetworking.Server
             {
                 List<Data.ClanWar> warsToStart = new List<Data.ClanWar>();
                 List<Data.ClanWar> warsToEnd = new List<Data.ClanWar>();
-                string query = String.Format("SELECT id, clan_1_id, clan_2_id, TIMESTAMPDIFF(HOUR, start_time, NOW()) AS passed_hours, stage FROM clan_wars WHERE stage > 0;");
+                string query = String.Format("SELECT id, clan_1_id, clan_2_id, TIMESTAMPDIFF(HOUR, start_time, NOW() at time zone 'utc') AS passed_hours, stage FROM clan_wars WHERE stage > 0;");
                 using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                 {
                     using (NpgsqlDataReader reader = command.ExecuteReader())
@@ -3612,11 +3807,11 @@ namespace Memewars.RealtimeNetworking.Server
                                     {
                                         if (time > 0)
                                         {
-                                            query = String.Format("INSERT INTO buildings (global_id, account_id, x_position, y_position, level, is_constructing, construction_time, construction_build_time, track_time) VALUES('{0}', {1}, {2}, {3}, 0, 1, NOW() + INTERVAL '{4} SECOND', {5}, NOW() - INTERVAL '1 HOUR');", building.id, account_id, x, y, time, time);
+                                            query = String.Format("INSERT INTO buildings (global_id, account_id, x_position, y_position, level, is_constructing, construction_time, construction_build_time, track_time) VALUES('{0}', {1}, {2}, {3}, 0, 1, NOW() at time zone 'utc' + INTERVAL '{4} SECOND', {5}, NOW() at time zone 'utc' - INTERVAL '1 HOUR');", building.id, account_id, x, y, time, time);
                                         }
                                         else
                                         {
-                                            query = String.Format("INSERT INTO buildings (global_id, account_id, x_position, y_position, level, is_constructing, track_time) VALUES('{0}', {1}, {2}, {3}, 1, 0, NOW() - INTERVAL '1 HOUR');", building.id, account_id, x, y);
+                                            query = String.Format("INSERT INTO buildings (global_id, account_id, x_position, y_position, level, is_constructing, track_time) VALUES('{0}', {1}, {2}, {3}, 1, 0, NOW() at time zone 'utc' - INTERVAL '1 HOUR');", building.id, account_id, x, y);
                                             AddXP(connection, account_id, building.gainedXp);
                                         }
                                         using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
@@ -3885,7 +4080,7 @@ namespace Memewars.RealtimeNetworking.Server
                         {
                             if (SpendResources(connection, account_id, reqGold, reqElixir, reqGems, reqDarkElixir))
                             {
-                                query = String.Format("UPDATE buildings SET is_constructing = 1, construction_time =  NOW() + INTERVAL '{0} SECOND', construction_build_time = {1} WHERE id = {2};", time, time, buildingID);
+                                query = String.Format("UPDATE buildings SET is_constructing = 1, construction_time =  NOW() at time zone 'utc' + INTERVAL '{0} SECOND', construction_build_time = {1} WHERE id = {2};", time, time, buildingID);
                                 using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                                 {
                                     command.ExecuteNonQuery();
@@ -3941,7 +4136,7 @@ namespace Memewars.RealtimeNetworking.Server
             using (NpgsqlConnection connection = GetDbConnection())
             {
                 int time = 0;
-                string query = String.Format("SELECT construction_time, NOW() AS now_time FROM buildings WHERE id = {0} AND account_id = {1} AND is_constructing > 0;", buildingID, account_id);
+                string query = String.Format("SELECT construction_time, NOW() at time zone 'utc' AS now_time FROM buildings WHERE id = {0} AND account_id = {1} AND is_constructing > 0;", buildingID, account_id);
                 using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                 {
                     using (NpgsqlDataReader reader = command.ExecuteReader())
@@ -3965,7 +4160,7 @@ namespace Memewars.RealtimeNetworking.Server
                     int requiredGems = Data.GetInstantBuildRequiredGems(time);
                     if (SpendResources(connection, account_id, 0, 0, requiredGems, 0))
                     {
-                        query = String.Format("UPDATE buildings SET construction_time = NOW() WHERE id = {0}", buildingID);
+                        query = String.Format("UPDATE buildings SET construction_time = NOW() at time zone 'utc' WHERE id = {0}", buildingID);
                         using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                         {
                             command.ExecuteNonQuery();
@@ -4373,7 +4568,7 @@ namespace Memewars.RealtimeNetworking.Server
             long id = 0;
             using (NpgsqlConnection connection = GetDbConnection())
             {
-                string query = String.Format("SELECT id FROM accounts WHERE id <> {0} AND shield < NOW() AND is_online <= 0 ORDER BY RAND() LIMIT 1;", account_id);
+                string query = String.Format("SELECT id FROM accounts WHERE id <> {0} AND shield < NOW() at time zone 'utc' AND is_online <= 0 ORDER BY RAND() LIMIT 1;", account_id);
                 using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                 {
                     using (NpgsqlDataReader reader = command.ExecuteReader())
@@ -4796,7 +4991,7 @@ namespace Memewars.RealtimeNetworking.Server
             int response = 0;
             using (NpgsqlConnection connection = GetDbConnection())
             {
-                string query = String.Format("SELECT clan_id FROM accounts WHERE id = {0} AND clan_join_timer <= NOW();", account_id);
+                string query = String.Format("SELECT clan_id FROM accounts WHERE id = {0} AND clan_join_timer <= NOW() at time zone 'utc';", account_id);
                 using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                 {
                     using (NpgsqlDataReader reader = command.ExecuteReader())
@@ -4833,7 +5028,7 @@ namespace Memewars.RealtimeNetworking.Server
                         }
                         if (clan_id > 0)
                         {
-                            query = String.Format("UPDATE accounts SET clan_join_timer = NOW() + INTERVAL '{0} HOUR', clan_id = {1}, clan_rank = 1, clan_chat_blocked = 0 WHERE id = {2}", Data.clanJoinTimeGapHours, clan_id, account_id);
+                            query = String.Format("UPDATE accounts SET clan_join_timer = NOW() at time zone 'utc' + INTERVAL '{0} HOUR', clan_id = {1}, clan_rank = 1, clan_chat_blocked = 0 WHERE id = {2}", Data.clanJoinTimeGapHours, clan_id, account_id);
                             using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                             {
                                 command.ExecuteNonQuery();
@@ -4961,7 +5156,7 @@ namespace Memewars.RealtimeNetworking.Server
             {
                 int townHallLevel = 1;
                 int trophies = 1;
-                string query = String.Format("SELECT accounts.clan_id, accounts.trophies, buildings.level FROM accounts LEFT JOIN buildings ON buildings.account_id = accounts.id AND buildings.global_id = '{0}' WHERE accounts.id = {1} AND accounts.clan_join_timer <= NOW();", Data.BuildingID.townhall.ToString(), account_id);
+                string query = String.Format("SELECT accounts.clan_id, accounts.trophies, buildings.level FROM accounts LEFT JOIN buildings ON buildings.account_id = accounts.id AND buildings.global_id = '{0}' WHERE accounts.id = {1} AND accounts.clan_join_timer <= NOW() at time zone 'utc';", Data.BuildingID.townhall.ToString(), account_id);
                 using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                 {
                     using (NpgsqlDataReader reader = command.ExecuteReader())
@@ -5093,7 +5288,7 @@ namespace Memewars.RealtimeNetworking.Server
 
         private static void JoinClanFinal(NpgsqlConnection connection, long clan_id, long account_id)
         {
-            string query = String.Format("UPDATE accounts SET clan_id = {0}, clan_join_timer = NOW() + INTERVAL '{1} HOUR', clan_chat_blocked = 0 WHERE id = {2}", clan_id, Data.clanJoinTimeGapHours, account_id);
+            string query = String.Format("UPDATE accounts SET clan_id = {0}, clan_join_timer = NOW() at time zone 'utc' + INTERVAL '{1} HOUR', clan_chat_blocked = 0 WHERE id = {2}", clan_id, Data.clanJoinTimeGapHours, account_id);
             using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
             {
                 command.ExecuteNonQuery();
@@ -5705,7 +5900,7 @@ namespace Memewars.RealtimeNetworking.Server
                                 }
                                 if (haveClan <= 0)
                                 {
-                                    query = String.Format("UPDATE accounts SET clan_id = {0}, clan_rank = 0, clan_chat_blocked = 0, clan_join_timer = NOW() + INTERVAL '{1} HOUR' WHERE id = {2} AND clan_id <= 0;", clan_id, Data.clanJoinTimeGapHours, id);
+                                    query = String.Format("UPDATE accounts SET clan_id = {0}, clan_rank = 0, clan_chat_blocked = 0, clan_join_timer = NOW() at time zone 'utc' + INTERVAL '{1} HOUR' WHERE id = {2} AND clan_id <= 0;", clan_id, Data.clanJoinTimeGapHours, id);
                                     using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                                     {
                                         command.ExecuteNonQuery();
@@ -5851,7 +6046,7 @@ namespace Memewars.RealtimeNetworking.Server
                                 command.ExecuteNonQuery();
                             }
                         }
-                        query = String.Format("UPDATE accounts SET clan_id = 0, clan_rank = 0, war_id = -1, clan_join_timer = NOW() + INTERVAL '{0} HOUR' WHERE id = {1}", Data.clanJoinTimeGapHours, account_id);
+                        query = String.Format("UPDATE accounts SET clan_id = 0, clan_rank = 0, war_id = -1, clan_join_timer = NOW() at time zone 'utc' + INTERVAL '{0} HOUR' WHERE id = {1}", Data.clanJoinTimeGapHours, account_id);
                         using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                         {
                             command.ExecuteNonQuery();
@@ -6823,7 +7018,7 @@ namespace Memewars.RealtimeNetworking.Server
                     long code_id = 0;
                     DateTime nowTime = DateTime.Now;
                     DateTime expireTime = nowTime;
-                    string query = String.Format("SELECT id, NOW() AS now_time, expire_time FROM verification_codes WHERE device_id = '{0}' AND target = '{1}' AND NOW() < expire_time;", device, email);
+                    string query = String.Format("SELECT id, NOW() at time zone 'utc' AS now_time, expire_time FROM verification_codes WHERE device_id = '{0}' AND target = '{1}' AND NOW() at time zone 'utc' < expire_time;", device, email);
                     using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                     {
                         using (NpgsqlDataReader reader = command.ExecuteReader())
@@ -6849,7 +7044,7 @@ namespace Memewars.RealtimeNetworking.Server
                         string code = Data.RandomCode(Data.recoveryCodeLength);
                         if (Email.SendEmailVerificationCode(code, email))
                         {
-                            query = String.Format("INSERT INTO verification_codes (target, device_id, code, expire_time) VALUES('{0}', '{1}', '{2}', NOW() + INTERVAL '{3} SECOND')", email, device, code, Data.recoveryCodeExpiration);
+                            query = String.Format("INSERT INTO verification_codes (target, device_id, code, expire_time) VALUES('{0}', '{1}', '{2}', NOW() at time zone 'utc' + INTERVAL '{3} SECOND')", email, device, code, Data.recoveryCodeExpiration);
                             using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                             {
                                 command.ExecuteNonQuery();
@@ -6914,7 +7109,7 @@ namespace Memewars.RealtimeNetworking.Server
                 if (account_id > 0)
                 {
                     long code_id = 0;
-                    string query = String.Format("SELECT id FROM verification_codes WHERE device_id = '{0}' AND target = '{1}' AND code = '{2}' AND NOW() < expire_time;", device, email, code);
+                    string query = String.Format("SELECT id FROM verification_codes WHERE device_id = '{0}' AND target = '{1}' AND code = '{2}' AND NOW() at time zone 'utc' < expire_time;", device, email, code);
                     using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                     {
                         using (NpgsqlDataReader reader = command.ExecuteReader())
@@ -7013,7 +7208,7 @@ namespace Memewars.RealtimeNetworking.Server
                         long code_id = 0;
                         DateTime nowTime = DateTime.Now;
                         DateTime expireTime = nowTime;
-                        query = String.Format("SELECT id, NOW() AS now_time, expire_time FROM verification_codes WHERE device_id = '{0}' AND target = '{1}' AND NOW() < expire_time;", device, email);
+                        query = String.Format("SELECT id, NOW() at time zone 'utc' AS now_time, expire_time FROM verification_codes WHERE device_id = '{0}' AND target = '{1}' AND NOW() at time zone 'utc' < expire_time;", device, email);
                         using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                         {
                             using (NpgsqlDataReader reader = command.ExecuteReader())
@@ -7039,7 +7234,7 @@ namespace Memewars.RealtimeNetworking.Server
                             string code = Data.RandomCode(Data.recoveryCodeLength);
                             if (Email.SendEmailConfirmationCode(code, email))
                             {
-                                query = String.Format("INSERT INTO verification_codes (target, device_id, code, expire_time) VALUES('{0}', '{1}', '{2}', NOW() + INTERVAL '{3} SECOND')", email, device, code, Data.confirmationCodeExpiration);
+                                query = String.Format("INSERT INTO verification_codes (target, device_id, code, expire_time) VALUES('{0}', '{1}', '{2}', NOW() at time zone 'utc' + INTERVAL '{3} SECOND')", email, device, code, Data.confirmationCodeExpiration);
                                 using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                                 {
                                     command.ExecuteNonQuery();
@@ -7120,7 +7315,7 @@ namespace Memewars.RealtimeNetworking.Server
                     if (!found)
                     {
                         long code_id = 0;
-                        query = String.Format("SELECT id FROM verification_codes WHERE device_id = '{0}' AND target = '{1}' AND code = '{2}' AND NOW() < expire_time;", device, email, code);
+                        query = String.Format("SELECT id FROM verification_codes WHERE device_id = '{0}' AND target = '{1}' AND code = '{2}' AND NOW() at time zone 'utc' < expire_time;", device, email, code);
                         using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                         {
                             using (NpgsqlDataReader reader = command.ExecuteReader())
@@ -7340,7 +7535,7 @@ namespace Memewars.RealtimeNetworking.Server
                     int global_chat_blocked = 0;
                     int clan_chat_blocked = 0;
                     bool timeOk = false;
-                    string query = String.Format("SELECT clan_id, global_chat_blocked, clan_chat_blocked FROM accounts WHERE id = {0} AND last_chat <= NOW() - INTERVAL '1 SECOND';", account_id);
+                    string query = String.Format("SELECT clan_id, global_chat_blocked, clan_chat_blocked FROM accounts WHERE id = {0} AND last_chat <= NOW() at time zone 'utc' - INTERVAL '1 SECOND';", account_id);
                     using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                     {
                         using (NpgsqlDataReader reader = command.ExecuteReader())
@@ -7400,7 +7595,7 @@ namespace Memewars.RealtimeNetworking.Server
                             }
                             if (sent)
                             {
-                                query = String.Format("UPDATE accounts SET last_chat = NOW() WHERE id = {0};", account_id);
+                                query = String.Format("UPDATE accounts SET last_chat = NOW() at time zone 'utc' WHERE id = {0};", account_id);
                                 using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                                 {
                                     command.ExecuteNonQuery();
@@ -7462,7 +7657,7 @@ namespace Memewars.RealtimeNetworking.Server
                 if (target_id > 0)
                 {
                     int reports_count = 0;
-                    query = String.Format("SELECT COUNT(id) AS reports FROM chat_reports WHERE reporter_id = {0} AND report_time >= NOW() - INTERVAL '{1} HOUR';", account_id, 24);
+                    query = String.Format("SELECT COUNT(id) AS reports FROM chat_reports WHERE reporter_id = {0} AND report_time >= NOW() at time zone 'utc' - INTERVAL '{1} HOUR';", account_id, 24);
                     using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                     {
                         using (NpgsqlDataReader reader = command.ExecuteReader())
@@ -7516,7 +7711,7 @@ namespace Memewars.RealtimeNetworking.Server
                             if (found)
                             {
                                 reports_count = 0;
-                                query = String.Format("SELECT accounts.clan_id AS clan FROM chat_reports LEFT JOIN accounts ON accounts.id = chat_reports.reporter_id WHERE chat_reports.target_id = {0} AND chat_reports.report_time >= NOW() - INTERVAL '{1} HOUR';", target_id, 24);
+                                query = String.Format("SELECT accounts.clan_id AS clan FROM chat_reports LEFT JOIN accounts ON accounts.id = chat_reports.reporter_id WHERE chat_reports.target_id = {0} AND chat_reports.report_time >= NOW() at time zone 'utc' - INTERVAL '{1} HOUR';", target_id, 24);
                                 using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                                 {
                                     using (NpgsqlDataReader reader = command.ExecuteReader())
@@ -7876,7 +8071,7 @@ namespace Memewars.RealtimeNetworking.Server
         private static Data.Research GetResearch(NpgsqlConnection connection, long account_id, string global_id, Data.ResearchType type, bool createIfNotExist = false)
         {
             Data.Research research = null;
-            string query = String.Format("SELECT id, level, researching, CASE WHEN researching > NOW() THEN 1 ELSE 0 END AS is_researching FROM research WHERE account_id = {0} AND type = {1} AND global_id = '{2}';", account_id, (int)type, global_id);
+            string query = String.Format("SELECT id, level, researching, CASE WHEN researching > NOW() at time zone 'utc' THEN 1 ELSE 0 END AS is_researching FROM research WHERE account_id = {0} AND type = {1} AND global_id = '{2}';", account_id, (int)type, global_id);
             using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
             {
                 using (NpgsqlDataReader reader = command.ExecuteReader())
@@ -7921,7 +8116,7 @@ namespace Memewars.RealtimeNetworking.Server
         private static List<Data.Research> GetResearchList(NpgsqlConnection connection, long account_id)
         {
             List<Data.Research> list = new List<Data.Research>();
-            string query = String.Format("SELECT id, level, type, global_id, researching, CASE WHEN researching > NOW() THEN 1 ELSE 0 END AS is_researching FROM research WHERE account_id = {0};", account_id);
+            string query = String.Format("SELECT id, level, type, global_id, researching, CASE WHEN researching > NOW() at time zone 'utc' THEN 1 ELSE 0 END AS is_researching FROM research WHERE account_id = {0};", account_id);
             using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
             {
                 using (NpgsqlDataReader reader = command.ExecuteReader())
@@ -8029,7 +8224,7 @@ namespace Memewars.RealtimeNetworking.Server
                     }
                     if (response == 1)
                     {
-                        string query = String.Format("UPDATE research SET level = level + 1, researching = NOW() + INTERVAL '{0} SECOND' WHERE id = {1};", time, research.id);
+                        string query = String.Format("UPDATE research SET level = level + 1, researching = NOW() at time zone 'utc' + INTERVAL '{0} SECOND' WHERE id = {1};", time, research.id);
                         using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                         {
                             command.ExecuteNonQuery();
