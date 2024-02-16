@@ -1,0 +1,5 @@
+{
+    "clientVersions": ["1.0.0", "1.0.1"],
+    "maxPlayers": "100000",
+    "portNumber": "5555"
+}

@@ -5,18 +5,49 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Net;
 using System.Net.Mail;
+using System.IO;
+using Newtonsoft.Json;
 
 namespace Memewars.RealtimeNetworking.Server
 {
     public class Email
     {
+        private class EmailConfig 
+        {
+            public string host { get; set; }
+            public int port { get; set; }
+            public string address { get; set; }
+            public string password { get; set; }
+            public string name { get; set; }
+            public string logo { get; set; }
+        }
 
-        protected static readonly string host = "smtp.gmail.com";
-        protected static readonly int port = 587;
-        protected static readonly string address = "demo@gmail.com";
-        protected static readonly string password = "abcd";
-        protected static readonly string name = "Memewars";
-        protected static readonly string logo = "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png";
+        private static string host;
+        private static int port;
+        private static string address;
+        private static string password;
+        private static string name;
+        private static string logo;
+
+        static Email()
+        {
+            GetEmailConfig();
+        }
+
+        private static void GetEmailConfig()
+        {
+            using (StreamReader r = new StreamReader("configs/email.json"))
+            {
+                string json = r.ReadToEnd();
+                EmailConfig config = JsonConvert.DeserializeObject<EmailConfig>(json);
+                host = config.host;
+                port = config.port;
+                address = config.address;
+                password = config.password;
+                name = config.name;
+                logo = config.logo;
+            }
+        }
 
         public static bool Send(string to, string subject, string mail)
         {

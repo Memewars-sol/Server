@@ -1,10 +1,25 @@
 ﻿using System;
 using System.Numerics;
+using System.IO;
+using Newtonsoft.Json;
 
 namespace Memewars.RealtimeNetworking.Server
 {
     class Terminal
     {
+
+        private class TerminalConfig 
+        {
+            public string[] clientVersions { get; set; }
+            public int maxPlayers { get; set; }
+            public int portNumber { get; set; }
+        }
+
+        private class FolderConfig 
+        {
+            public string dataFolderPath { get; set; }
+            public string logFolderPath { get; set; }
+        }
 
         #region Update
         public const int updatesPerSecond = 30;
@@ -14,13 +29,40 @@ namespace Memewars.RealtimeNetworking.Server
         }
         #endregion
 
-        #region Connection
-        public static string[] clientVersions = { "1.0.0", "1.0.1" };
-        public const int maxPlayers = 100000;
-        public const int portNumber = 5555;
-        public static int onlinePlayers = 0;
-        public static readonly string dataFolderPath = "/Applications/MAMP/htdocs/Projects/Memewars/main/Server/";
-        public static readonly string logFolderPath = "/Applications/MAMP/htdocs/Projects/Memewars/main/Server/Errors/";
+        #region Initialization
+        public static string[] clientVersions;
+        public static int maxPlayers;
+        public static int portNumber;
+        public static int onlinePlayers;
+        public static string dataFolderPath;
+        public static string logFolderPath;
+        private static void GetTerminalConfig()
+        {
+            using (StreamReader r = new StreamReader("configs/terminal.json"))
+            {
+                string json = r.ReadToEnd();
+                TerminalConfig config = JsonConvert.DeserializeObject<TerminalConfig>(json);
+                clientVersions = config.clientVersions;
+                maxPlayers = config.maxPlayers;
+                portNumber = config.portNumber;
+            }
+        }
+        private static void GetFolderConfig()
+        {
+            using (StreamReader r = new StreamReader("configs/terminal.json"))
+            {
+                string json = r.ReadToEnd();
+                FolderConfig config = JsonConvert.DeserializeObject<FolderConfig>(json);
+                dataFolderPath = config.dataFolderPath;
+                logFolderPath = config.logFolderPath;
+            }
+        }
+
+        static Terminal()
+        {
+            GetTerminalConfig();
+            GetFolderConfig();
+        }
 
         public static void OnClientConnected(int id, string ip)
         {

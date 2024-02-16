@@ -17,7 +17,7 @@ namespace Memewars.RealtimeNetworking.Server
         #region Main Data And Methods
         private static Credential GetDbCredentials()
         {
-            using (StreamReader r = new StreamReader("credentials.json"))
+            using (StreamReader r = new StreamReader("configs/credentials.json"))
             {
                 string json = r.ReadToEnd();
                 Credential credential = JsonConvert.DeserializeObject<Credential>(json);
@@ -25,7 +25,7 @@ namespace Memewars.RealtimeNetworking.Server
             }
         }
 
-        public class Credential
+        private class Credential
         {
             public string dbIP;
             public string dbPort { get; set; }
@@ -34,10 +34,25 @@ namespace Memewars.RealtimeNetworking.Server
             public string dbName { get; set; }
         }
 
-        public static NpgsqlConnection GetDbConnection()
+        private static string dbIP;
+        private static string dbPort;
+        private static string dbUsername;
+        private static string dbPassword;
+        private static string dbName;
+
+        static Database()
         {
             var credential = GetDbCredentials();
-            var cs = String.Format("Host={0};Port={1};User ID={2};Password={3};Database={4};", credential.dbIP, credential.dbPort, credential.dbUsername, credential.dbPassword, credential.dbName);
+            dbIP = credential.dbIP;
+            dbPort = credential.dbPort;
+            dbUsername = credential.dbUsername;
+            dbPassword = credential.dbPassword;
+            dbName = credential.dbName;
+        }
+
+        public static NpgsqlConnection GetDbConnection()
+        {
+            var cs = String.Format("Host={0};Port={1};User ID={2};Password={3};Database={4};", dbIP, dbPort, dbUsername, dbPassword, dbName);
             var con = new NpgsqlConnection(cs);
             con.Open();
             return con;
