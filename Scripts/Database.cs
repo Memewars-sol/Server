@@ -179,14 +179,15 @@ namespace Memewars.RealtimeNetworking.Server
 
         #region Player
 
-        public async static void AuthenticatePlayer(int id, string device, string password, string username)
+        public async static void AuthenticatePlayer(int id, string address)
         {
-            Data.InitializationData auth = await AuthenticatePlayerAsync(id, device, password, username);
+            Data.InitializationData auth = await AuthenticatePlayerAsync(id, address);
             Packet packet = new Packet();
             packet.Write((int)Terminal.RequestsID.AUTH);
             if (auth != null)
             {
-                Server.clients[id].device = device;
+                Console.WriteLine("Has auth");
+                Server.clients[id].address = address;
                 Server.clients[id].account = auth.accountID;
                 auth.versions = Terminal.clientVersions;
                 string authData = await Data.SerializeAsync<Data.InitializationData>(auth);
@@ -199,6 +200,7 @@ namespace Memewars.RealtimeNetworking.Server
             }
             else
             {
+                Console.WriteLine("No auth");
                 packet.Write(0);
             }
             Sender.TCP_Send(id, packet);
@@ -232,21 +234,21 @@ namespace Memewars.RealtimeNetworking.Server
             return await task;
         }
 
-        private async static Task<Data.InitializationData> AuthenticatePlayerAsync(int id, string device, string password, string username)
+        private async static Task<Data.InitializationData> AuthenticatePlayerAsync(int id, string address)
         {
             Task<Data.InitializationData> task = Task.Run(() =>
             {
-                return Retry.Do(() => _AuthenticatePlayerAsync(id, device, password, username), TimeSpan.FromSeconds(0.1), 1, false);
+                return Retry.Do(() => _AuthenticatePlayerAsync(id, address), TimeSpan.FromSeconds(0.1), 1, false);
             });
             return await task;
         }
 
-        private static Data.InitializationData _AuthenticatePlayerAsync(int id, string device, string password, string username)
+        private static Data.InitializationData _AuthenticatePlayerAsync(int id, string address)
         {
             Data.InitializationData initializationData = new Data.InitializationData();
             using (NpgsqlConnection connection = GetDbConnection())
             {
-                string query = String.Format("SELECT id, password, is_online, client_id FROM accounts WHERE device_id = '{0}' AND password = '{1}'", device, password);
+                string query = String.Format("SELECT id, password, is_online, client_id FROM accounts WHERE address = '{0}'", address);
                 bool found = false;
                 using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                 {
@@ -264,7 +266,7 @@ namespace Memewars.RealtimeNetworking.Server
                                     Server.clients[online_id].Disconnect();
                                 }
                                 initializationData.accountID = _id;
-                                initializationData.password = password;
+                                initializationData.password = ""; // dont have password
                                 found = true;
                             }
                         }
@@ -272,13 +274,13 @@ namespace Memewars.RealtimeNetworking.Server
                 }
                 if (found == false)
                 {
-                    query = String.Format("UPDATE accounts SET device_id = '' WHERE device_id = '{0}'", device);
-                    using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                    {
-                        command.ExecuteNonQuery();
-                    }
+                    // query = String.Format("UPDATE accounts SET device_id = '' WHERE device_id = '{0}'", "");
+                    // using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
+                    // {
+                    //     command.ExecuteNonQuery();
+                    // }
                     initializationData.password = Data.EncrypteToMD5(Tools.GenerateToken());
-                    query = String.Format("INSERT INTO accounts (device_id, password, name) VALUES('{0}', '{1}', '{2}') RETURNING id;", device, initializationData.password, username);
+                    query = String.Format("INSERT INTO accounts (device_id, password, name, address) VALUES('{0}', '{1}', '{2}', '{3}') RETURNING id;", "", "", "", address);
                     using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                     {
                         initializationData.accountID = (long)command.ExecuteScalar();
@@ -342,12 +344,15 @@ namespace Memewars.RealtimeNetworking.Server
                 initializationData.research = GetResearchList(connection, initializationData.accountID);
                 connection.Close();
             }
+            Console.WriteLine("Initialized");
             return initializationData;
         }
 
-        public async static void SyncPlayerData(int id, string device)
+        public async static void SyncPlayerData(int id)
         {
             long account_id = Server.clients[id].account;
+            Console.WriteLine("Sync");
+            Console.WriteLine(account_id);
             Data.Player player = await GetPlayerDataAsync(account_id);
             Packet packet = new Packet();
             packet.Write((int)Terminal.RequestsID.SYNC);
@@ -358,6 +363,7 @@ namespace Memewars.RealtimeNetworking.Server
                 player.units = await GetUnitsAsync(account_id);
                 player.spells = await GetSpellsAsync(account_id);
                 player.buildings = buildings;
+                Console.WriteLine("Buildings: " + buildings.Count);
                 string playerData = await Data.SerializeAsync<Data.Player>(player);
                 byte[] playerBytes = await Data.CompressAsync(playerData);
                 packet.Write(playerBytes.Length);
@@ -463,27 +469,27 @@ namespace Memewars.RealtimeNetworking.Server
             return data;
         }
 
-        public async static void LogOut(int id, string device)
+        public async static void LogOut(int id, string address)
         {
             long account_id = Server.clients[id].account;
-            int response = await LogOutAsync(account_id, device);
+            int response = await LogOutAsync(account_id, address);
         }
 
-        private async static Task<int> LogOutAsync(long account_id, string device)
+        private async static Task<int> LogOutAsync(long account_id, string address)
         {
             Task<int> task = Task.Run(() =>
             {
-                return Retry.Do(() => _LogOutAsync(account_id, device), TimeSpan.FromSeconds(0.1), 1, false);
+                return Retry.Do(() => _LogOutAsync(account_id, address), TimeSpan.FromSeconds(0.1), 1, false);
             });
             return await task;
         }
 
-        private static int _LogOutAsync(long account_id, string device)
+        private static int _LogOutAsync(long account_id, string address)
         {
             int response = 0;
             using (NpgsqlConnection connection = GetDbConnection())
             {
-                string query = String.Format("SELECT id FROM accounts WHERE id = {0} AND device_id = '{1}' AND is_online > 0;", account_id, device);
+                string query = String.Format("SELECT id FROM accounts WHERE id = {0} AND address = '{1}' AND is_online > 0;", account_id, address);
                 bool found = false;
                 using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                 {
@@ -495,38 +501,14 @@ namespace Memewars.RealtimeNetworking.Server
                         }
                     }
                 }
-                List<int> clients = new List<int>();
+
                 if (found)
                 {
-                    /*
-                    query = String.Format("SELECT client_id FROM accounts WHERE device_id = '{0}' AND is_online > 0 AND id <> = {1};", device, account_id);
-                    using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                    {
-                        using (NpgsqlDataReader reader = command.ExecuteReader())
-                        {
-                            if (reader.HasRows)
-                            {
-                                while (reader.Read())
-                                {
-                                    int id = 0;
-                                    int.TryParse(reader["client_id"].ToString(), out id);
-                                    clients.Add(id);
-                                }
-                            }
-                        }
-                    }
-                    */
-                    query = String.Format("UPDATE accounts SET device_id = '', is_online = 0 WHERE device_id = '{0}';", device);
+                    query = String.Format("UPDATE accounts SET is_online = 0 WHERE device_id = '{0}';", address);
                     using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                     {
                         command.ExecuteNonQuery();
                     }
-                    /*
-                    for (int i = 0; i < clients.Count; i++)
-                    {
-                        // TODO -> Disconnect
-                    }
-                    */
                 }
                 connection.Close();
             }
@@ -707,6 +689,7 @@ namespace Memewars.RealtimeNetworking.Server
                         query = String.Format("INSERT INTO iap (account_id, market, product_id, token, price, currency, validated) VALUES({0}, '{1}', '{2}', '{3}', '{4}', 'IRR', {5});", account_id, market, product, token, price, valid ? 1 : 0);
                         using (NpgsqlCommand command = new NpgsqlCommand(query, connection)) { command.ExecuteNonQuery(); }
                         query = String.Format("UPDATE accounts SET gems = gems + {0} WHERE id = {1};", gems, account_id);
+                        Console.WriteLine(query);
                         using (NpgsqlCommand command = new NpgsqlCommand(query, connection)) { command.ExecuteNonQuery(); }
                         response = 1;
                     }
@@ -1121,6 +1104,7 @@ namespace Memewars.RealtimeNetworking.Server
                 if (gems > 0)
                 {
                     string query = String.Format("UPDATE accounts SET gems = gems - {0} WHERE id = {1};", gems, account_id);
+                    Console.WriteLine(query);
                     using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                     {
                         command.ExecuteNonQuery();
@@ -1299,6 +1283,7 @@ namespace Memewars.RealtimeNetworking.Server
             if (gems > 0)
             {
                 string query = String.Format("UPDATE accounts SET gems = gems + {0} WHERE id = {1};", gems, account_id);
+                Console.WriteLine(query);
                 using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                 {
                     command.ExecuteNonQuery();
@@ -3665,7 +3650,7 @@ namespace Memewars.RealtimeNetworking.Server
 
         #region Build And Replace
 
-        public async static void PlaceBuilding(int id, string device, string buildingID, int x, int y, int layout, long layoutID)
+        public async static void PlaceBuilding(int id, string buildingID, int x, int y, int layout, long layoutID)
         {
             long account_id = Server.clients[id].account;
             Packet packet = new Packet();
@@ -6989,9 +6974,9 @@ namespace Memewars.RealtimeNetworking.Server
 
         #region Email
 
-        public async static void SendRecoveryCode(int id, string device, string email)
+        public async static void SendRecoveryCode(int id, string address, string email)
         {
-            var code = await SendRecoveryCodeAsync(id, device, email);
+            var code = await SendRecoveryCodeAsync(id, address, email);
             Packet packet = new Packet();
             packet.Write((int)Terminal.RequestsID.SENDCODE);
             packet.Write(code.Item1);
@@ -6999,16 +6984,16 @@ namespace Memewars.RealtimeNetworking.Server
             Sender.TCP_Send(id, packet);
         }
 
-        private async static Task<(int, int)> SendRecoveryCodeAsync(int id, string device, string email)
+        private async static Task<(int, int)> SendRecoveryCodeAsync(int id, string address, string email)
         {
             Task<(int, int)> task = Task.Run(() =>
             {
-                return Retry.Do(() => _SendRecoveryCodeAsync(id, device, email), TimeSpan.FromSeconds(0.1), 1, false);
+                return Retry.Do(() => _SendRecoveryCodeAsync(id, address, email), TimeSpan.FromSeconds(0.1), 1, false);
             });
             return await task;
         }
 
-        private static (int, int) _SendRecoveryCodeAsync(int id, string device, string email)
+        private static (int, int) _SendRecoveryCodeAsync(int id, string address, string email)
         {
             int expiration = 0;
             int response = 0;
@@ -7037,7 +7022,7 @@ namespace Memewars.RealtimeNetworking.Server
                     long code_id = 0;
                     DateTime nowTime = DateTime.Now;
                     DateTime expireTime = nowTime;
-                    string query = String.Format("SELECT id, NOW() at time zone 'utc' AS now_time, expire_time FROM verification_codes WHERE device_id = '{0}' AND target = '{1}' AND NOW() at time zone 'utc' < expire_time;", device, email);
+                    string query = String.Format("SELECT id, NOW() at time zone 'utc' AS now_time, expire_time FROM verification_codes WHERE address = '{0}' AND target = '{1}' AND NOW() at time zone 'utc' < expire_time;", address, email);
                     using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                     {
                         using (NpgsqlDataReader reader = command.ExecuteReader())
@@ -7063,7 +7048,7 @@ namespace Memewars.RealtimeNetworking.Server
                         string code = Data.RandomCode(Data.recoveryCodeLength);
                         if (Email.SendEmailVerificationCode(code, email))
                         {
-                            query = String.Format("INSERT INTO verification_codes (target, device_id, code, expire_time) VALUES('{0}', '{1}', '{2}', NOW() at time zone 'utc' + INTERVAL '{3} SECOND')", email, device, code, Data.recoveryCodeExpiration);
+                            query = String.Format("INSERT INTO verification_codes (target, address, code, expire_time) VALUES('{0}', '{1}', '{2}', NOW() at time zone 'utc' + INTERVAL '{3} SECOND')", email, address, code, Data.recoveryCodeExpiration);
                             using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                             {
                                 command.ExecuteNonQuery();
@@ -7082,9 +7067,9 @@ namespace Memewars.RealtimeNetworking.Server
             return (response, expiration);
         }
 
-        public async static void ConfirmRecoveryCode(int id, string device, string email, string code)
+        public async static void ConfirmRecoveryCode(int id, string address, string email, string code)
         {
-            var response = await ConfirmRecoveryCodeAsync(id, device, email, code);
+            var response = await ConfirmRecoveryCodeAsync(id, address, email, code);
             Packet packet = new Packet();
             packet.Write((int)Terminal.RequestsID.CONFIRMCODE);
             packet.Write(response.Item1);
@@ -7092,16 +7077,16 @@ namespace Memewars.RealtimeNetworking.Server
             Sender.TCP_Send(id, packet);
         }
 
-        private async static Task<(int, string)> ConfirmRecoveryCodeAsync(int id, string device, string email, string code)
+        private async static Task<(int, string)> ConfirmRecoveryCodeAsync(int id, string address, string email, string code)
         {
             Task<(int, string)> task = Task.Run(() =>
             {
-                return Retry.Do(() => _ConfirmRecoveryCodeAsync(id, device, email, code), TimeSpan.FromSeconds(0.1), 1, false);
+                return Retry.Do(() => _ConfirmRecoveryCodeAsync(id, address, email, code), TimeSpan.FromSeconds(0.1), 1, false);
             });
             return await task;
         }
 
-        private static (int, string) _ConfirmRecoveryCodeAsync(int id, string device, string email, string code)
+        private static (int, string) _ConfirmRecoveryCodeAsync(int id, string address, string email, string code)
         {
             string password = "";
             int response = 0;
@@ -7128,7 +7113,7 @@ namespace Memewars.RealtimeNetworking.Server
                 if (account_id > 0)
                 {
                     long code_id = 0;
-                    string query = String.Format("SELECT id FROM verification_codes WHERE device_id = '{0}' AND target = '{1}' AND code = '{2}' AND NOW() at time zone 'utc' < expire_time;", device, email, code);
+                    string query = String.Format("SELECT id FROM verification_codes WHERE address = '{0}' AND target = '{1}' AND code = '{2}' AND NOW() at time zone 'utc' < expire_time;", address, email, code);
                     using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                     {
                         using (NpgsqlDataReader reader = command.ExecuteReader())
@@ -7145,7 +7130,7 @@ namespace Memewars.RealtimeNetworking.Server
                     if (code_id > 0)
                     {
                         password = Data.EncrypteToMD5(Tools.GenerateToken());
-                        query = String.Format("UPDATE accounts SET device_id = '{0}', password = '{1}' WHERE id = {2};", device, password, account_id);
+                        query = String.Format("UPDATE accounts SET password = '{0}' WHERE id = {1};", password, account_id);
                         using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                         {
                             command.ExecuteNonQuery();
@@ -7167,10 +7152,10 @@ namespace Memewars.RealtimeNetworking.Server
             return (response, password);
         }
 
-        public async static void SendEmailCode(int id, string device, string email)
+        public async static void SendEmailCode(int id, string address, string email)
         {
             long account_id = Server.clients[id].account;
-            var code = await SendEmailCodeAsync(id, account_id, device, email);
+            var code = await SendEmailCodeAsync(id, account_id, address, email);
             Packet packet = new Packet();
             packet.Write((int)Terminal.RequestsID.EMAILCODE);
             packet.Write(code.Item1);
@@ -7178,16 +7163,16 @@ namespace Memewars.RealtimeNetworking.Server
             Sender.TCP_Send(id, packet);
         }
 
-        private async static Task<(int, int)> SendEmailCodeAsync(int id, long account_id, string device, string email)
+        private async static Task<(int, int)> SendEmailCodeAsync(int id, long account_id, string address, string email)
         {
             Task<(int, int)> task = Task.Run(() =>
             {
-                return Retry.Do(() => _SendEmailCodeAsync(id, account_id, device, email), TimeSpan.FromSeconds(0.1), 1, false);
+                return Retry.Do(() => _SendEmailCodeAsync(id, account_id, address, email), TimeSpan.FromSeconds(0.1), 1, false);
             });
             return await task;
         }
 
-        private static (int, int) _SendEmailCodeAsync(int id, long account_id, string device, string email)
+        private static (int, int) _SendEmailCodeAsync(int id, long account_id, string address, string email)
         {
             int expiration = 0;
             int response = 0;
@@ -7196,7 +7181,7 @@ namespace Memewars.RealtimeNetworking.Server
                 bool found = false;
                 if (!string.IsNullOrEmpty(email))
                 {
-                    string query = String.Format("SELECT id FROM accounts WHERE id = {0} AND device_id = '{1}' AND is_online > 0;", account_id, device);
+                    string query = String.Format("SELECT id FROM accounts WHERE id = {0} AND address = '{1}' AND is_online > 0;", account_id, address);
                     using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                     {
                         using (NpgsqlDataReader reader = command.ExecuteReader())
@@ -7227,7 +7212,7 @@ namespace Memewars.RealtimeNetworking.Server
                         long code_id = 0;
                         DateTime nowTime = DateTime.Now;
                         DateTime expireTime = nowTime;
-                        query = String.Format("SELECT id, NOW() at time zone 'utc' AS now_time, expire_time FROM verification_codes WHERE device_id = '{0}' AND target = '{1}' AND NOW() at time zone 'utc' < expire_time;", device, email);
+                        query = String.Format("SELECT id, NOW() at time zone 'utc' AS now_time, expire_time FROM verification_codes WHERE address = '{0}' AND target = '{1}' AND NOW() at time zone 'utc' < expire_time;", address, email);
                         using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                         {
                             using (NpgsqlDataReader reader = command.ExecuteReader())
@@ -7253,7 +7238,7 @@ namespace Memewars.RealtimeNetworking.Server
                             string code = Data.RandomCode(Data.recoveryCodeLength);
                             if (Email.SendEmailConfirmationCode(code, email))
                             {
-                                query = String.Format("INSERT INTO verification_codes (target, device_id, code, expire_time) VALUES('{0}', '{1}', '{2}', NOW() at time zone 'utc' + INTERVAL '{3} SECOND')", email, device, code, Data.confirmationCodeExpiration);
+                                query = String.Format("INSERT INTO verification_codes (target, address, code, expire_time) VALUES('{0}', '{1}', '{2}', NOW() at time zone 'utc' + INTERVAL '{3} SECOND')", email, address, code, Data.confirmationCodeExpiration);
                                 using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                                 {
                                     command.ExecuteNonQuery();
@@ -7277,10 +7262,10 @@ namespace Memewars.RealtimeNetworking.Server
             return (response, expiration);
         }
 
-        public async static void ConfirmEmailCode(int id, string device, string email, string code)
+        public async static void ConfirmEmailCode(int id, string address, string email, string code)
         {
             long account_id = Server.clients[id].account;
-            int response = await ConfirmEmailCodeAsync(account_id, device, email, code);
+            int response = await ConfirmEmailCodeAsync(account_id, address, email, code);
             Packet packet = new Packet();
             packet.Write((int)Terminal.RequestsID.EMAILCONFIRM);
             packet.Write(response);
@@ -7288,16 +7273,16 @@ namespace Memewars.RealtimeNetworking.Server
             Sender.TCP_Send(id, packet);
         }
 
-        private async static Task<int> ConfirmEmailCodeAsync(long account_id, string device, string email, string code)
+        private async static Task<int> ConfirmEmailCodeAsync(long account_id, string address, string email, string code)
         {
             Task<int> task = Task.Run(() =>
             {
-                return Retry.Do(() => _ConfirmEmailCodeAsync(account_id, device, email, code), TimeSpan.FromSeconds(0.1), 1, false);
+                return Retry.Do(() => _ConfirmEmailCodeAsync(account_id, address, email, code), TimeSpan.FromSeconds(0.1), 1, false);
             });
             return await task;
         }
 
-        private static int _ConfirmEmailCodeAsync(long account_id, string device, string email, string code)
+        private static int _ConfirmEmailCodeAsync(long account_id, string address, string email, string code)
         {
             int response = 0;
             using (NpgsqlConnection connection = GetDbConnection())
@@ -7305,7 +7290,7 @@ namespace Memewars.RealtimeNetworking.Server
                 bool found = false;
                 if (!string.IsNullOrEmpty(email))
                 {
-                    string query = String.Format("SELECT id FROM accounts WHERE id = {0} AND device_id = '{1}' AND is_online > 0;", account_id, device);
+                    string query = String.Format("SELECT id FROM accounts WHERE id = {0} AND address = '{1}' AND is_online > 0;", account_id, address);
                     using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                     {
                         using (NpgsqlDataReader reader = command.ExecuteReader())
@@ -7334,7 +7319,7 @@ namespace Memewars.RealtimeNetworking.Server
                     if (!found)
                     {
                         long code_id = 0;
-                        query = String.Format("SELECT id FROM verification_codes WHERE device_id = '{0}' AND target = '{1}' AND code = '{2}' AND NOW() at time zone 'utc' < expire_time;", device, email, code);
+                        query = String.Format("SELECT id FROM verification_codes WHERE address = '{0}' AND target = '{1}' AND code = '{2}' AND NOW() at time zone 'utc' < expire_time;", address, email, code);
                         using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                         {
                             using (NpgsqlDataReader reader = command.ExecuteReader())

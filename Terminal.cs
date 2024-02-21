@@ -2,6 +2,10 @@
 using System.Numerics;
 using System.IO;
 using Newtonsoft.Json;
+using Chaos.NaCl;
+using System.Text;
+using SimpleBase;
+using System.Diagnostics;
 
 namespace Memewars.RealtimeNetworking.Server
 {
@@ -99,7 +103,7 @@ namespace Memewars.RealtimeNetworking.Server
         #region Data
         public enum RequestsID
         {
-            AUTH = 1, SYNC = 2, BUILD = 3, REPLACE = 4, COLLECT = 5, PREUPGRADE = 6, UPGRADE = 7, INSTANTBUILD = 8, TRAIN = 9, CANCELTRAIN = 10, BATTLEFIND = 11, BATTLESTART = 12, BATTLEFRAME = 13, BATTLEEND = 14, OPENCLAN = 15, GETCLANS = 16, JOINCLAN = 17, LEAVECLAN = 18, EDITCLAN = 19, CREATECLAN = 20, OPENWAR = 21, STARTWAR = 22, CANCELWAR = 23, WARSTARTED = 24, WARATTACK = 25, WARREPORTLIST = 26, WARREPORT = 27, JOINREQUESTS = 28, JOINRESPONSE = 29, GETCHATS = 30, SENDCHAT = 31, SENDCODE = 32, CONFIRMCODE = 33, EMAILCODE = 34, EMAILCONFIRM = 35, LOGOUT = 36, KICKMEMBER = 37, BREW = 38, CANCELBREW = 39, RESEARCH = 40, PROMOTEMEMBER = 41, DEMOTEMEMBER = 42, SCOUT = 43, BUYSHIELD = 44, BUYGEM = 45, BYUGOLD = 46, REPORTCHAT = 47, PLAYERSRANK = 48, BOOST = 49, BUYRESOURCE = 50, BATTLEREPORTS = 51, BATTLEREPORT = 52, RENAME = 53
+            AUTH = 1, SYNC = 2, BUILD = 3, REPLACE = 4, COLLECT = 5, PREUPGRADE = 6, UPGRADE = 7, INSTANTBUILD = 8, TRAIN = 9, CANCELTRAIN = 10, BATTLEFIND = 11, BATTLESTART = 12, BATTLEFRAME = 13, BATTLEEND = 14, OPENCLAN = 15, GETCLANS = 16, JOINCLAN = 17, LEAVECLAN = 18, EDITCLAN = 19, CREATECLAN = 20, OPENWAR = 21, STARTWAR = 22, CANCELWAR = 23, WARSTARTED = 24, WARATTACK = 25, WARREPORTLIST = 26, WARREPORT = 27, JOINREQUESTS = 28, JOINRESPONSE = 29, GETCHATS = 30, SENDCHAT = 31, SENDCODE = 32, CONFIRMCODE = 33, EMAILCODE = 34, EMAILCONFIRM = 35, LOGOUT = 36, KICKMEMBER = 37, BREW = 38, CANCELBREW = 39, RESEARCH = 40, PROMOTEMEMBER = 41, DEMOTEMEMBER = 42, SCOUT = 43, BUYSHIELD = 44, BUYGEM = 45, BYUGOLD = 46, REPORTCHAT = 47, PLAYERSRANK = 48, BOOST = 49, BUYRESOURCE = 50, BATTLEREPORTS = 51, BATTLEREPORT = 52, RENAME = 53, PREAUTH = 54
         }
 
         public static void ReceivedPacket(int clientID, Packet packet)
@@ -107,28 +111,58 @@ namespace Memewars.RealtimeNetworking.Server
             try
             {
                 int id = packet.ReadInt();
-                string device = "";
+
+                // authentication
+                string address = packet.ReadString();
+                string signature = packet.ReadString();
+                string authMessage = packet.ReadString();
+
+                byte[] addressBytes = Base58.Bitcoin.Decode(address);
+                byte[] signatureBytes = Convert.FromBase64String(signature);
+                byte[] authMessageBytes = Encoding.UTF8.GetBytes(authMessage);
+
+                bool IsVerified = Ed25519.Verify(signatureBytes, authMessageBytes, addressBytes);
+                
+                // Console.WriteLine("===== AUTH =====");
+                // Console.WriteLine(address);
+                // Console.WriteLine(signature);
+                // Console.WriteLine(authMessage);
+                // Console.WriteLine(IsVerified);
+                // Console.WriteLine("===== END AUTH =====");
+
+                int retCode = IsVerified? 1 : 0;
+                Packet retPacket = new Packet();
+
                 long databaseID = 0;
+
+                // filter all methods to be authenticated
+                if(!IsVerified) {
+                    Console.WriteLine("Not verified");
+                    retPacket.Write(retCode);
+                    Sender.TCP_Send(clientID, retPacket);
+                    return;
+                }
+
                 switch ((RequestsID)id)
                 {
+                    case RequestsID.PREAUTH:
+                        retPacket.Write((int)RequestsID.PREAUTH);
+                        retPacket.Write(retCode);
+                        Sender.TCP_Send(clientID, retPacket);
+                        break;
                     case RequestsID.AUTH:
-                        device = packet.ReadString();
-                        string pass = packet.ReadString();
-                        string user = packet.ReadString();
-                        Database.AuthenticatePlayer(clientID, device, pass, user);
+                        Database.AuthenticatePlayer(clientID, address);
                         break;
                     case RequestsID.SYNC:
-                        device = packet.ReadString();
-                        Database.SyncPlayerData(clientID, device);
+                        Database.SyncPlayerData(clientID);
                         break;
                     case RequestsID.BUILD:
-                        device = packet.ReadString();
                         string building = packet.ReadString();
                         int x = packet.ReadInt();
                         int y = packet.ReadInt();
                         int layoutBuild = packet.ReadInt();
                         databaseID = packet.ReadLong();
-                        Database.PlaceBuilding(clientID, device, building, x, y, layoutBuild, databaseID);
+                        Database.PlaceBuilding(clientID, building, x, y, layoutBuild, databaseID);
                         break;
                     case RequestsID.REPLACE:
                         databaseID = packet.ReadLong();
@@ -259,31 +293,31 @@ namespace Memewars.RealtimeNetworking.Server
                         databaseID = packet.ReadLong();
                         Database.SyncMessages(clientID, (Data.ChatType)msgType, databaseID);
                         break;
+
+                    // email logins
+                    // unused
                     case RequestsID.SENDCODE:
-                        device = packet.ReadString();
                         string targetEmail = packet.ReadString();
-                        Database.SendRecoveryCode(clientID, device, targetEmail);
+                        Database.SendRecoveryCode(clientID, address, targetEmail);
                         break;
                     case RequestsID.CONFIRMCODE:
-                        device = packet.ReadString();
                         string confirmEmail = packet.ReadString();
                         string code = packet.ReadString();
-                        Database.ConfirmRecoveryCode(clientID, device, confirmEmail, code);
+                        Database.ConfirmRecoveryCode(clientID, address, confirmEmail, code);
                         break;
                     case RequestsID.EMAILCODE:
-                        device = packet.ReadString();
                         string sendEmail = packet.ReadString();
-                        Database.SendEmailCode(clientID, device, sendEmail);
+                        Database.SendEmailCode(clientID, address, sendEmail);
                         break;
                     case RequestsID.EMAILCONFIRM:
-                        device = packet.ReadString();
                         string coEmail = packet.ReadString();
                         string codeEmail = packet.ReadString();
-                        Database.ConfirmEmailCode(clientID, device, coEmail, codeEmail);
+                        Database.ConfirmEmailCode(clientID, address, coEmail, codeEmail);
                         break;
+                    // end email logins
+                    
                     case RequestsID.LOGOUT:
-                        device = packet.ReadString();
-                        Database.LogOut(clientID, device);
+                        Database.LogOut(clientID, address);
                         break;
                     case RequestsID.KICKMEMBER:
                         databaseID = packet.ReadLong();

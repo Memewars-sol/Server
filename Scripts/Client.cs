@@ -14,7 +14,7 @@ namespace Memewars.RealtimeNetworking.Server
         public string sendToken = "xxxxx";
         public string receiveToken = "xxxxx";
 
-        public string device = "";
+        public string address = "";
         public long account = 0;
         public bool connected = false;
 
@@ -221,7 +221,7 @@ namespace Memewars.RealtimeNetworking.Server
             {
                 udp.Disconnect();
             }
-            device = "";
+            address = "";
             account = 0;
         }
 
