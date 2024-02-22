@@ -186,7 +186,6 @@ namespace Memewars.RealtimeNetworking.Server
             packet.Write((int)Terminal.RequestsID.AUTH);
             if (auth != null)
             {
-                Console.WriteLine("Has auth");
                 Server.clients[id].address = address;
                 Server.clients[id].account = auth.accountID;
                 auth.versions = Terminal.clientVersions;
@@ -200,7 +199,6 @@ namespace Memewars.RealtimeNetworking.Server
             }
             else
             {
-                Console.WriteLine("No auth");
                 packet.Write(0);
             }
             Sender.TCP_Send(id, packet);
@@ -344,15 +342,12 @@ namespace Memewars.RealtimeNetworking.Server
                 initializationData.research = GetResearchList(connection, initializationData.accountID);
                 connection.Close();
             }
-            Console.WriteLine("Initialized");
             return initializationData;
         }
 
         public async static void SyncPlayerData(int id)
         {
             long account_id = Server.clients[id].account;
-            Console.WriteLine("Sync");
-            Console.WriteLine(account_id);
             Data.Player player = await GetPlayerDataAsync(account_id);
             Packet packet = new Packet();
             packet.Write((int)Terminal.RequestsID.SYNC);
@@ -363,7 +358,6 @@ namespace Memewars.RealtimeNetworking.Server
                 player.units = await GetUnitsAsync(account_id);
                 player.spells = await GetSpellsAsync(account_id);
                 player.buildings = buildings;
-                Console.WriteLine("Buildings: " + buildings.Count);
                 string playerData = await Data.SerializeAsync<Data.Player>(player);
                 byte[] playerBytes = await Data.CompressAsync(playerData);
                 packet.Write(playerBytes.Length);
@@ -689,7 +683,6 @@ namespace Memewars.RealtimeNetworking.Server
                         query = String.Format("INSERT INTO iap (account_id, market, product_id, token, price, currency, validated) VALUES({0}, '{1}', '{2}', '{3}', '{4}', 'IRR', {5});", account_id, market, product, token, price, valid ? 1 : 0);
                         using (NpgsqlCommand command = new NpgsqlCommand(query, connection)) { command.ExecuteNonQuery(); }
                         query = String.Format("UPDATE accounts SET gems = gems + {0} WHERE id = {1};", gems, account_id);
-                        Console.WriteLine(query);
                         using (NpgsqlCommand command = new NpgsqlCommand(query, connection)) { command.ExecuteNonQuery(); }
                         response = 1;
                     }
@@ -1104,7 +1097,6 @@ namespace Memewars.RealtimeNetworking.Server
                 if (gems > 0)
                 {
                     string query = String.Format("UPDATE accounts SET gems = gems - {0} WHERE id = {1};", gems, account_id);
-                    Console.WriteLine(query);
                     using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                     {
                         command.ExecuteNonQuery();
@@ -1283,7 +1275,6 @@ namespace Memewars.RealtimeNetworking.Server
             if (gems > 0)
             {
                 string query = String.Format("UPDATE accounts SET gems = gems + {0} WHERE id = {1};", gems, account_id);
-                Console.WriteLine(query);
                 using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                 {
                     command.ExecuteNonQuery();
