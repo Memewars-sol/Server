@@ -3059,7 +3059,7 @@ namespace Memewars.RealtimeNetworking.Server
             {
                 List<Data.ClanWar> warsToStart = new List<Data.ClanWar>();
                 List<Data.ClanWar> warsToEnd = new List<Data.ClanWar>();
-                string query = String.Format("SELECT id, clan_1_id, clan_2_id, TIMESTAMPDIFF(HOUR, start_time, NOW() at time zone 'utc') AS passed_hours, stage FROM clan_wars WHERE stage > 0;");
+                string query = String.Format("SELECT id, clan_1_id, clan_2_id, start_time + interval '{0} hours' > current_timestamp AS has_passed_prep, start_time + interval '{1} hours' > current_timestamp AS has_passed_battle, stage FROM clan_wars WHERE stage > 0;", Data.clanWarPrepHours, Data.clanWarPrepHours + Data.clanWarBattleHours);
                 using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                 {
                     using (NpgsqlDataReader reader = command.ExecuteReader())
@@ -3068,11 +3068,13 @@ namespace Memewars.RealtimeNetworking.Server
                         {
                             while (reader.Read())
                             {
-                                int passed_hours = 0;
                                 int stage = 0;
-                                int.TryParse(reader["passed_hours"].ToString(), out passed_hours);
+                                bool has_passed_prep = false;
+                                bool.TryParse(reader["has_passed_prep"].ToString(), out has_passed_prep);
+                                bool has_passed_battle = false;
+                                bool.TryParse(reader["has_passed_battle"].ToString(), out has_passed_battle);
                                 int.TryParse(reader["stage"].ToString(), out stage);
-                                if (stage == 1 && passed_hours >= Data.clanWarPrepHours)
+                                if (stage == 1 && has_passed_prep)
                                 {
                                     Data.ClanWar war = new Data.ClanWar();
                                     war.stage = stage;
@@ -3081,7 +3083,7 @@ namespace Memewars.RealtimeNetworking.Server
                                     long.TryParse(reader["clan_2_id"].ToString(), out war.clan2);
                                     warsToStart.Add(war);
                                 }
-                                else if (stage == 2 && passed_hours >= Data.clanWarPrepHours + Data.clanWarBattleHours)
+                                else if (stage == 2 && has_passed_battle)
                                 {
                                     Data.ClanWar war = new Data.ClanWar();
                                     war.stage = stage;
