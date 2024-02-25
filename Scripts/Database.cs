@@ -8,6 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using Newtonsoft.Json;
+using WebUtils;
 
 namespace Memewars.RealtimeNetworking.Server
 {
@@ -241,7 +242,7 @@ namespace Memewars.RealtimeNetworking.Server
             return await task;
         }
 
-        private static Data.InitializationData _AuthenticatePlayerAsync(int id, string address)
+        private async static Task<Data.InitializationData> _AuthenticatePlayerAsync(int id, string address)
         {
             Data.InitializationData initializationData = new Data.InitializationData();
             using (NpgsqlConnection connection = GetDbConnection())
@@ -283,6 +284,13 @@ namespace Memewars.RealtimeNetworking.Server
                     {
                         initializationData.accountID = (long)command.ExecuteScalar();
                     }
+
+                    // mints the cNFT
+                    // causes 1.7s delay
+                    await HttpSender.PostJson("http://localhost:8081/api/mintAccount", new Dictionary<string, string>(){
+                        ["address"] = address,
+                    });
+
                     query = String.Format("INSERT INTO buildings (global_id, account_id, x_position, y_position, level, track_time, x_war, y_war) VALUES('{0}', {1}, {2}, {3}, 1, NOW() at time zone 'utc' - INTERVAL '1 HOUR', {4}, {5});", Data.BuildingID.townhall.ToString(), initializationData.accountID, 25, 25, 25, 25);
                     using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                     {
