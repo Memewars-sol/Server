@@ -9,6 +9,7 @@ using System.Linq;
 using System.Net.Http;
 using Newtonsoft.Json;
 using WebUtils;
+using Models;
 
 namespace Memewars.RealtimeNetworking.Server
 {
@@ -16,7 +17,17 @@ namespace Memewars.RealtimeNetworking.Server
     {
 
         #region Main Data And Methods
-        private static Credential GetDbCredentials()
+
+        public class Credential
+        {
+            public string dbIP { get; set; }
+            public string dbPort { get; set; }
+            public string dbUsername { get; set; }
+            public string dbPassword { get; set; }
+            public string dbName { get; set; }
+        }
+
+        public static Credential GetDbCredentials()
         {
             using (StreamReader r = new StreamReader("configs/credentials.json"))
             {
@@ -24,15 +35,6 @@ namespace Memewars.RealtimeNetworking.Server
                 Credential credential = JsonConvert.DeserializeObject<Credential>(json);
                 return credential;
             }
-        }
-
-        private class Credential
-        {
-            public string dbIP;
-            public string dbPort { get; set; }
-            public string dbUsername { get; set; }
-            public string dbPassword { get; set; }
-            public string dbName { get; set; }
         }
 
         private static string dbIP;
@@ -75,9 +77,9 @@ namespace Memewars.RealtimeNetworking.Server
         private static bool warCheckUpdating = false;
         private static double warCheckPeriod = 0.1d;
 
-        private static DateTime obsticlesTime = DateTime.Now;
-        private static bool obsticlesUpdating = false;
-        private static double obsticlesPeriod = 86400d;
+        private static DateTime obstaclesTime = DateTime.Now;
+        private static bool obstaclesUpdating = false;
+        private static double obstaclesPeriod = 86400d;
 
         public static void Update()
         {
@@ -119,13 +121,13 @@ namespace Memewars.RealtimeNetworking.Server
                     GeneralUpdateWar();
                 }
             }
-            if (!obsticlesUpdating)
+            if (!obstaclesUpdating)
             {
-                if ((DateTime.Now - obsticlesTime).TotalSeconds >= obsticlesPeriod)
+                if ((DateTime.Now - obstaclesTime).TotalSeconds >= obstaclesPeriod)
                 {
-                    obsticlesUpdating = true;
-                    obsticlesTime = DateTime.Now;
-                    ObsticlesCreation();
+                    obstaclesUpdating = true;
+                    obstaclesTime = DateTime.Now;
+                    ObstaclesCreation();
                 }
             }
         }
@@ -248,7 +250,6 @@ namespace Memewars.RealtimeNetworking.Server
             using (NpgsqlConnection connection = GetDbConnection())
             {
                 string query = String.Format("SELECT id, password, is_online, client_id FROM accounts WHERE address = '{0}'", address);
-                bool found = false;
                 using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                 {
                     using (NpgsqlDataReader reader = command.ExecuteReader())
@@ -266,79 +267,19 @@ namespace Memewars.RealtimeNetworking.Server
                                 }
                                 initializationData.accountID = _id;
                                 initializationData.password = ""; // dont have password
-                                found = true;
+                                break;
                             }
                         }
                     }
                 }
-                if (found == false)
+
+                // dont have account so we initialize
+                if (initializationData.accountID == 0)
                 {
-                    // query = String.Format("UPDATE accounts SET device_id = '' WHERE device_id = '{0}'", "");
-                    // using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                    // {
-                    //     command.ExecuteNonQuery();
-                    // }
-                    initializationData.password = Data.EncrypteToMD5(Tools.GenerateToken());
-                    query = String.Format("INSERT INTO accounts (device_id, password, name, address) VALUES('{0}', '{1}', '{2}', '{3}') RETURNING id;", "", "", "", address);
-                    using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                    {
-                        initializationData.accountID = (long)command.ExecuteScalar();
-                    }
-
-                    // mints the cNFT
-                    // causes 1.7s delay
-                    await HttpSender.PostJson("http://localhost:8081/api/mintAccount", new Dictionary<string, string>(){
-                        ["address"] = address,
-                    });
-
-                    query = String.Format("INSERT INTO buildings (global_id, account_id, x_position, y_position, level, track_time, x_war, y_war) VALUES('{0}', {1}, {2}, {3}, 1, NOW() at time zone 'utc' - INTERVAL '1 HOUR', {4}, {5});", Data.BuildingID.townhall.ToString(), initializationData.accountID, 25, 25, 25, 25);
-                    using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                    {
-                        command.ExecuteNonQuery();
-                    }
-                    query = String.Format("INSERT INTO buildings (global_id, account_id, x_position, y_position, level, track_time, x_war, y_war) VALUES('{0}', {1}, {2}, {3}, 1, NOW() at time zone 'utc' - INTERVAL '1 HOUR', {4}, {5});", Data.BuildingID.goldmine.ToString(), initializationData.accountID, 27, 21, 27, 21);
-                    using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                    {
-                        command.ExecuteNonQuery();
-                    }
-                    query = String.Format("INSERT INTO buildings (global_id, account_id, x_position, y_position, level, track_time, x_war, y_war) VALUES('{0}', {1}, {2}, {3}, 1, NOW() at time zone 'utc' - INTERVAL '1 HOUR', {4}, {5});", Data.BuildingID.goldstorage.ToString(), initializationData.accountID, 30, 28, 30, 28);
-                    using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                    {
-                        command.ExecuteNonQuery();
-                    }
-                    query = String.Format("INSERT INTO buildings (global_id, account_id, x_position, y_position, level, track_time, x_war, y_war) VALUES('{0}', {1}, {2}, {3}, 1, NOW() at time zone 'utc' - INTERVAL '1 HOUR', {4}, {5});", Data.BuildingID.elixirmine.ToString(), initializationData.accountID, 21, 27, 21, 27);
-                    using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                    {
-                        command.ExecuteNonQuery();
-                    }
-                    query = String.Format("INSERT INTO buildings (global_id, account_id, x_position, y_position, level, track_time, x_war, y_war) VALUES('{0}', {1}, {2}, {3}, 1, NOW() at time zone 'utc' - INTERVAL '1 HOUR', {4}, {5});", Data.BuildingID.elixirstorage.ToString(), initializationData.accountID, 25, 30, 25, 30);
-                    using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                    {
-                        command.ExecuteNonQuery();
-                    }
-                    query = String.Format("INSERT INTO buildings (global_id, account_id, x_position, y_position, level, track_time, x_war, y_war) VALUES('{0}', {1}, {2}, {3}, 1, NOW() at time zone 'utc' - INTERVAL '1 HOUR', {4}, {5});", Data.BuildingID.buildershut.ToString(), initializationData.accountID, 22, 24, 22, 24);
-                    using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                    {
-                        command.ExecuteNonQuery();
-                    }
-                    List<int> xl = new List<int> { 19, 24, 32, 32, 34, 30, 26, 17, 8, 3, 2, 5, 16, 26, 35, 40 };
-                    List<int> yl = new List<int> { 20, 15, 16, 24, 30, 33, 35, 37, 32, 39, 10, 4, 1, 3, 1, 5 };
-                    Random rnd = new Random();
-                    for (int i = 1; i <= 5; i++)
-                    {
-                        int index = rnd.Next(0, xl.Count);
-                        int level = rnd.Next(1, 6);
-                        query = String.Format("INSERT INTO buildings (global_id, account_id, x_position, y_position, level, track_time, x_war, y_war) VALUES('{0}', {1}, {2}, {3}, {6}, NOW() at time zone 'utc' - INTERVAL '1 HOUR', {4}, {5});", Data.BuildingID.obstacle.ToString(), initializationData.accountID, xl[index], yl[index], xl[index], yl[index], level);
-                        using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                        {
-                            command.ExecuteNonQuery();
-                        }
-                        xl.RemoveAt(index);
-                        yl.RemoveAt(index);
-                    }
-                    AddResources(connection, initializationData.accountID, 10000, 10000, 0, 250);
+                    initializationData.accountID = await new Account{ Address = address } .Create();
                 }
                 
+                // set account as online
                 query = String.Format("UPDATE accounts SET is_online = 1, client_id = {0}, last_login = NOW() at time zone 'utc' WHERE id = {1}", id, initializationData.accountID);
                 using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                 {
@@ -2500,22 +2441,22 @@ namespace Memewars.RealtimeNetworking.Server
             }
         }
 
-        public async static void ObsticlesCreation()
+        public async static void ObstaclesCreation()
         {
-            await ObsticlesCreationAsync();
-            obsticlesUpdating = false;
+            await ObstaclesCreationAsync();
+            obstaclesUpdating = false;
         }
 
-        private async static Task<bool> ObsticlesCreationAsync()
+        private async static Task<bool> ObstaclesCreationAsync()
         {
             Task<bool> task = Task.Run(() =>
             {
-                return Retry.Do(() => _ObsticlesCreationAsync(), TimeSpan.FromSeconds(0.1), 1, false);
+                return Retry.Do(() => _ObstaclesCreationAsync(), TimeSpan.FromSeconds(0.1), 1, false);
             });
             return await task;
         }
 
-        private static bool _ObsticlesCreationAsync()
+        private static bool _ObstaclesCreationAsync()
         {
             int placed = 0;
             int count = 0;
