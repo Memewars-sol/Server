@@ -6,4 +6,5 @@
 5. Copy configs/folderPaths.json.example, paste and rename as configs/folderPaths.json, adjust accordingly.
 6. Copy configs/terminal.json.example, paste and rename as configs/terminal.json, adjust accordingly.
 7. Copy configs/email.json.example, paste and rename as configs/email.json, adjust accordingly.
-8. ```dotnet run```
+8. Copy configs/websocket.json.example, paste and rename as configs/websocket.json, adjust accordingly.
+9. ```dotnet run```

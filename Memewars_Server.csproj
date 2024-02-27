@@ -11,5 +11,6 @@
     <PackageReference Include="Chaos.NaCl.Core" Version="1.0.0"/>
     <PackageReference Include="SimpleBase" Version="4.0.0"/>
     <PackageReference Include="Microsoft.AspNet.WebApi.Client" Version="6.0.0"/>
+    <PackageReference Include="WebSocketSharp-netstandard" Version="1.0.1" />
   </ItemGroup>
 </Project>

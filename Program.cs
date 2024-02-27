@@ -18,7 +18,8 @@ namespace Memewars.RealtimeNetworking.Server
                 isRunning = true;
                 Thread mainThread = new Thread(new ThreadStart(MainThread));
                 mainThread.Start();
-                Server.Start(Terminal.maxPlayers, Terminal.portNumber);
+                // Server.Start(Terminal.maxPlayers, Terminal.portNumber);
+                WsServer.Start();
             }
             catch (Exception ex)
             {
