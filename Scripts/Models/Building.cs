@@ -22,6 +22,10 @@ namespace Models {
         public const int GENERAL_LAYOUT = 1;
         public const int WAR_LAYOUT = 2;
 
+        private static List<BuildingID> NonCNFTBuildings = new List<BuildingID>() {
+            BuildingID.obstacle
+        };
+
         public enum BuildingTargetType
         {
             none = 0, ground = 1, air = 2, all = 3
@@ -30,6 +34,7 @@ namespace Models {
         // This building's params
         public BuildingID id = BuildingID.townhall;
         public long account_id { get; set; }
+        public string address { get; set; }
         public int level = 0;
         public long databaseID = 0;
         public int x = 0;
@@ -58,6 +63,8 @@ namespace Models {
         public float splashRange = 0;
         public float rangedSpeed = 5;
         public double percentage = 0;
+        public bool is_in_inventory = false;
+        public bool is_cnft = true;
         // end this building's params
 
         public async static Task<Data.ServerBuilding> GetServerBuildingAsync(string id, int level)
@@ -204,6 +211,7 @@ namespace Models {
 
 
         public async Task<bool> Create() {
+            is_cnft = !NonCNFTBuildings.Contains(id);
             Data.ServerBuilding building = await GetServerBuildingAsync(id.ToString(), level);
 
             if (building == null || x < 0 || y < 0 || x + building.columns > Data.gridSize /* x position more than max size */ || y + building.rows > Data.gridSize  /* y position more than max size */)
@@ -235,7 +243,8 @@ namespace Models {
                         level, 
                         track_time, 
                         x_war, 
-                        y_war
+                        y_war,
+                        is_cnft
                     ) VALUES (
                         '{0}', 
                         {1}, 
@@ -244,10 +253,21 @@ namespace Models {
                         {4}, 
                         NOW() at time zone 'utc' - INTERVAL '1 HOUR', 
                         {5}, 
-                        {6}
-                    );", id, account_id, x, y, level, warX, warY);
+                        {6},
+                        {7}
+                    ) RETURNING id;", id, account_id, x, y, level, warX, warY, is_cnft);
             using NpgsqlCommand command = new NpgsqlCommand(query, connection);
-            command.ExecuteNonQuery();
+            var building_id = (long)command.ExecuteScalar();
+
+            // mints the cNFT
+            // only mint if needed
+            // dont need to await since we want it to run in parallel
+            if(is_cnft) {
+                _ = HttpSender.PostJson("/mintBuilding", new Dictionary<string, string>(){
+                    ["address"] = address,
+                    ["building_id"] = building_id.ToString(),
+                });
+            }
             return true;
         }
     }

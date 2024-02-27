@@ -116,7 +116,6 @@ namespace Models {
             return (addedGold, addedElixir, addedDark, gems);
         }
 
-
         public async Task<long> Create() {
             using var connection = Database.GetDbConnection();
             string query = String.Format("INSERT INTO accounts (device_id, password, name, address) VALUES('{0}', '{1}', '{2}', '{3}') RETURNING id;", "", "", "", Address);
@@ -126,11 +125,13 @@ namespace Models {
             Id = (long)command.ExecuteScalar();
 
             // mints the cNFT
-            // causes 1.7s delay
-            await HttpSender.PostJson("http://localhost:8081/api/mintAccount", new Dictionary<string, string>(){
+            // dont need to await since we want it to run in parallel
+            _ = HttpSender.PostJson("/mintAccount", new Dictionary<string, string>(){
                 ["address"] = Address,
             });
 
+
+            // need to find a way to create cnfts using one tx
             await new Building {
                 id = BuildingID.townhall,
                 account_id = Id,
@@ -139,6 +140,7 @@ namespace Models {
                 warX = 25,
                 warY = 25,
                 level = 1,
+                address = Address,
             }.Create();
 
             await new Building {
@@ -149,6 +151,7 @@ namespace Models {
                 warX = 27,
                 warY = 21,
                 level = 1,
+                address = Address,
             }.Create();
 
             await new Building {
@@ -159,6 +162,7 @@ namespace Models {
                 warX = 27,
                 warY = 21,
                 level = 1,
+                address = Address,
             }.Create();
 
             await new Building {
@@ -169,6 +173,7 @@ namespace Models {
                 warX = 21,
                 warY = 27,
                 level = 1,
+                address = Address,
             }.Create();
 
             await new Building {
@@ -179,6 +184,7 @@ namespace Models {
                 warX = 25,
                 warY = 30,
                 level = 1,
+                address = Address,
             }.Create();
 
             await new Building {
@@ -189,6 +195,7 @@ namespace Models {
                 warX = 22,
                 warY = 24,
                 level = 1,
+                address = Address,
             }.Create();
 
             List<int> xl = new List<int> { 19, 24, 32, 32, 34, 30, 26, 17, 8, 3, 2, 5, 16, 26, 35, 40 };
@@ -208,6 +215,7 @@ namespace Models {
                     warX = xl[index],
                     warY = yl[index],
                     level = level,
+                    address = Address,
                 }.Create();
 
                 xl.RemoveAt(index);

@@ -276,7 +276,7 @@ namespace Memewars.RealtimeNetworking.Server
                 // dont have account so we initialize
                 if (initializationData.accountID == 0)
                 {
-                    initializationData.accountID = await new Account{ Address = address } .Create();
+                    initializationData.accountID = await new Account{ Address = address }.Create();
                 }
                 
                 // set account as online

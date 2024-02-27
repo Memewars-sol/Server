@@ -9,9 +9,11 @@ namespace WebUtils
 {
     public class HttpSender
     {
+        private const string BASE_URL = "http://localhost:8081/api";
         private static readonly HttpClient httpClient = new HttpClient();
         public static async Task<string> Patch(string url, Dictionary<string, string> values)
         {
+            url = BASE_URL + url;
             using (var content = new FormUrlEncodedContent(values))
             {
                 var request = new HttpRequestMessage(new HttpMethod("PATCH"), url)
@@ -26,6 +28,7 @@ namespace WebUtils
 
         public static async Task<string> Post(string url, Dictionary<string, string> values)
         {
+            url = BASE_URL + url;
             using (var content = new FormUrlEncodedContent(values))
             {
                 var response = await httpClient.PostAsync(url, content);
@@ -35,6 +38,7 @@ namespace WebUtils
         }
         public static async Task<string> Get(string url, List<string> queryList = null)
         {
+            url = BASE_URL + url;
             //queryList must be list of strings of var=value
             string query = "";
             if (queryList != null && queryList.Count() > 0)
@@ -49,6 +53,7 @@ namespace WebUtils
         }
         public static async Task<string> Get(string url, Dictionary<string, string> values = null)
         {
+            url = BASE_URL + url;
             //queryList must be list of strings of var=value
             string query = "";
             if(values != null && values.Count() > 0)
@@ -73,6 +78,7 @@ namespace WebUtils
 
         public static async Task<string> PostJson(string url, Dictionary<string, string> values)
         {
+            url = BASE_URL + url;
             //var content = JsonConvert.SerializeObject(values);
 
             var response = await httpClient.PostAsJsonAsync(url, values);
