@@ -130,73 +130,76 @@ namespace Models {
                 ["address"] = Address,
             });
 
-
-            // need to find a way to create cnfts using one tx
-            await new Building {
-                id = BuildingID.townhall,
-                account_id = Id,
-                x = 25,
-                y = 25,
-                warX = 25,
-                warY = 25,
-                level = 1,
-                address = Address,
-            }.Create();
-
-            await new Building {
-                id = BuildingID.goldmine,
-                account_id = Id,
-                x = 27,
-                y = 21,
-                warX = 27,
-                warY = 21,
-                level = 1,
-                address = Address,
-            }.Create();
-
-            await new Building {
-                id = BuildingID.goldstorage,
-                account_id = Id,
-                x = 27,
-                y = 21,
-                warX = 27,
-                warY = 21,
-                level = 1,
-                address = Address,
-            }.Create();
-
-            await new Building {
-                id = BuildingID.elixirmine,
-                account_id = Id,
-                x = 21,
-                y = 27,
-                warX = 21,
-                warY = 27,
-                level = 1,
-                address = Address,
-            }.Create();
-
-            await new Building {
-                id = BuildingID.elixirstorage,
-                account_id = Id,
-                x = 25,
-                y = 30,
-                warX = 25,
-                warY = 30,
-                level = 1,
-                address = Address,
-            }.Create();
-
-            await new Building {
-                id = BuildingID.buildershut,
-                account_id = Id,
-                x = 22,
-                y = 24,
-                warX = 22,
-                warY = 24,
-                level = 1,
-                address = Address,
-            }.Create();
+            List<long> BuildingIds = new List<long>
+            {
+                // need to find a way to create cnfts using one tx
+                await new Building
+                {
+                    id = BuildingID.townhall,
+                    account_id = Id,
+                    x = 25,
+                    y = 25,
+                    warX = 25,
+                    warY = 25,
+                    level = 1,
+                    address = Address,
+                }.Create(),
+                await new Building
+                {
+                    id = BuildingID.goldmine,
+                    account_id = Id,
+                    x = 27,
+                    y = 21,
+                    warX = 27,
+                    warY = 21,
+                    level = 1,
+                    address = Address,
+                }.Create(),
+                await new Building
+                {
+                    id = BuildingID.goldstorage,
+                    account_id = Id,
+                    x = 30,
+                    y = 28,
+                    warX = 30,
+                    warY = 28,
+                    level = 1,
+                    address = Address,
+                }.Create(),
+                await new Building
+                {
+                    id = BuildingID.elixirmine,
+                    account_id = Id,
+                    x = 21,
+                    y = 27,
+                    warX = 21,
+                    warY = 27,
+                    level = 1,
+                    address = Address,
+                }.Create(),
+                await new Building
+                {
+                    id = BuildingID.elixirstorage,
+                    account_id = Id,
+                    x = 25,
+                    y = 30,
+                    warX = 25,
+                    warY = 30,
+                    level = 1,
+                    address = Address,
+                }.Create(),
+                await new Building
+                {
+                    id = BuildingID.buildershut,
+                    account_id = Id,
+                    x = 22,
+                    y = 24,
+                    warX = 22,
+                    warY = 24,
+                    level = 1,
+                    address = Address,
+                }.Create()
+            };
 
             List<int> xl = new List<int> { 19, 24, 32, 32, 34, 30, 26, 17, 8, 3, 2, 5, 16, 26, 35, 40 };
             List<int> yl = new List<int> { 20, 15, 16, 24, 30, 33, 35, 37, 32, 39, 10, 4, 1, 3, 1, 5 };
@@ -207,6 +210,7 @@ namespace Models {
                 int level = rnd.Next(1, 6);
 
                 // add random obstacles
+                // dont mint these as cnft
                 await new Building {
                     id = BuildingID.obstacle,
                     account_id = Id,
@@ -223,6 +227,13 @@ namespace Models {
             }
 
             AddResources(connection, 10000, 10000, 0, 250);
+
+            // builk mint the buildings
+            Console.WriteLine(JsonConvert.SerializeObject(BuildingIds));
+            _ = HttpSender.PostJson("/mintBuildings", new Dictionary<string, string>(){
+                ["address"] = Address,
+                ["building_ids"] = JsonConvert.SerializeObject(BuildingIds),
+            });
             connection.Close();
             return Id;
         }

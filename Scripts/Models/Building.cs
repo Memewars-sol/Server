@@ -210,13 +210,13 @@ namespace Models {
 
 
 
-        public async Task<bool> Create() {
+        public async Task<long> Create() {
             is_cnft = !NonCNFTBuildings.Contains(id);
             Data.ServerBuilding building = await GetServerBuildingAsync(id.ToString(), level);
 
             if (building == null || x < 0 || y < 0 || x + building.columns > Data.gridSize /* x position more than max size */ || y + building.rows > Data.gridSize  /* y position more than max size */)
             {
-                return false;
+                return -1;
             }
 
             List<Data.Building> buildings = GetBuildings(account_id);
@@ -230,7 +230,7 @@ namespace Models {
                 // intersected with another building
                 if (rect2.IntersectsWith(rect1))
                 {
-                    return false;
+                    return -1;
                 }
             }
 
@@ -263,12 +263,10 @@ namespace Models {
             // only mint if needed
             // dont need to await since we want it to run in parallel
             if(is_cnft) {
-                _ = HttpSender.PostJson("/mintBuilding", new Dictionary<string, string>(){
-                    ["address"] = address,
-                    ["building_id"] = building_id.ToString(),
-                });
+                return building_id;
             }
-            return true;
+            
+            return -1;
         }
     }
 }
