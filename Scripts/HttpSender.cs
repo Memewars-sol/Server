@@ -4,16 +4,33 @@ using System.Linq;
 using System.Web;
 using System.Net.Http;
 using System.Threading.Tasks;
+using System.IO;
+using Newtonsoft.Json;
 
 namespace WebUtils
 {
     public class HttpSender
     {
+        private static class Credential
+        {
+            public static string ServerKey { get; set; }
+
+            static Credential() {
+                using (StreamReader r = new StreamReader("configs/localComm.json"))
+                {
+                    string json = r.ReadToEnd();
+                    var credential = JsonConvert.DeserializeObject<dynamic>(json);
+                    ServerKey = credential.serverKey;
+                }
+            }
+        }
+
         private const string BASE_URL = "http://localhost:8081/api";
         private static readonly HttpClient httpClient = new HttpClient();
         public static async Task<string> Patch(string url, Dictionary<string, string> values)
         {
             url = BASE_URL + url;
+            values["server_key"] = Credential.ServerKey;
             using (var content = new FormUrlEncodedContent(values))
             {
                 var request = new HttpRequestMessage(new HttpMethod("PATCH"), url)
@@ -29,6 +46,7 @@ namespace WebUtils
         public static async Task<string> Post(string url, Dictionary<string, string> values)
         {
             url = BASE_URL + url;
+            values["server_key"] = Credential.ServerKey;
             using (var content = new FormUrlEncodedContent(values))
             {
                 var response = await httpClient.PostAsync(url, content);
@@ -79,6 +97,7 @@ namespace WebUtils
         public static async Task<string> PostJson(string url, Dictionary<string, string> values)
         {
             url = BASE_URL + url;
+            values["server_key"] = Credential.ServerKey;
             //var content = JsonConvert.SerializeObject(values);
 
             var response = await httpClient.PostAsJsonAsync(url, values);
