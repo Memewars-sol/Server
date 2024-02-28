@@ -14,11 +14,41 @@ namespace Memewars.RealtimeNetworking.Server
 {
     public class Echo: WebSocketBehavior
     {
+
+        // Deserialize the serialized data back into a Packet object
+        public static Packet Deserialize(byte[] serializedData)
+        {
+            Packet packet = new Packet();
+
+            // Extract the length of the packet's content
+            int contentLength = BitConverter.ToInt32(serializedData, 0);
+
+            // Remove the length bytes from the beginning
+            serializedData = serializedData.Skip(sizeof(int)).ToArray();
+
+            // Set the bytes of the packet's content
+            packet.SetBytes(serializedData);
+
+            return packet;
+        }
+
+        // Deserialize the serialized data back into a Packet object
+        private static Packet DeserializeBase64(string base64SerializedData)
+        {
+            // Convert the base64 string back to byte array
+            byte[] serializedData = Convert.FromBase64String(base64SerializedData);
+
+            // Deserialize the byte array back into a Packet object
+            Packet packet = Deserialize(serializedData);
+
+            return packet;
+        }
+
         protected override void OnMessage(MessageEventArgs e)
         {
             // base.OnMessage(e);
             Console.WriteLine("Received message from client: " + e.Data);
-            Send(e.Data);
+            // Send(e.Data);
         }
 
         protected override void OnClose(CloseEventArgs e)
