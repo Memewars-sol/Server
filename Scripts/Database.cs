@@ -193,30 +193,6 @@ namespace Memewars.RealtimeNetworking.Server
 
         #endregion
 
-        #region Helpers
-
-        private static int GetBuildingConstructionCount(long accountID, NpgsqlConnection connection)
-        {
-            int count = 0;
-            string query = String.Format("SELECT id FROM buildings WHERE account_id = {0} AND is_constructing > 0;", accountID);
-            using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-            {
-                using (NpgsqlDataReader reader = command.ExecuteReader())
-                {
-                    if (reader.HasRows)
-                    {
-                        while (reader.Read())
-                        {
-                            count++;
-                        }
-                    }
-                }
-            }
-            return count;
-        }
-
-        #endregion
-
         #region Resource Manager
 
         private static bool SpendResources(NpgsqlConnection connection, long account_id, int gold, int elixir, int gems, int darkElixir)
@@ -2072,7 +2048,7 @@ namespace Memewars.RealtimeNetworking.Server
                         if (haveBuilding)
                         {
                             int buildersCount = Account.GetBuildingCount(account_id, "buildershut");
-                            int constructingCount = GetBuildingConstructionCount(account_id, connection);
+                            int constructingCount = Account.GetBuildingConstructionCount(account_id);
                             if (time > 0 && buildersCount <= constructingCount)
                             {
                                 response = 5;
@@ -2344,7 +2320,7 @@ namespace Memewars.RealtimeNetworking.Server
                 if (haveLevel)
                 {
                     int buildersCount = Account.GetBuildingCount(account_id, "buildershut");
-                    int constructingCount = GetBuildingConstructionCount(account_id, connection);
+                    int constructingCount = Account.GetBuildingConstructionCount(account_id);
                     if (time > 0 && buildersCount <= constructingCount)
                     {
                         response = 5;
