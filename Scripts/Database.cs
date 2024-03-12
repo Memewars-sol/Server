@@ -279,17 +279,17 @@ namespace Memewars.RealtimeNetworking.Server
         public async static void SyncPlayerData(int id)
         {
             long account_id = Server.clients[id].account;
-            Data.Player player = await GetPlayerDataAsync(account_id);
+            Player player = await GetPlayerDataAsync(account_id);
             Packet packet = new Packet();
             packet.Write((int)Terminal.RequestsID.SYNC);
             if (player != null)
             {
                 packet.Write(1);
-                List<Data.Building> buildings = await GetBuildingsAsync(account_id);
+                List<Building> buildings = await GetBuildingsAsync(account_id);
                 player.units = await GetUnitsAsync(account_id);
                 player.spells = await GetSpellsAsync(account_id);
                 player.buildings = buildings;
-                string playerData = await Data.SerializeAsync<Data.Player>(player);
+                string playerData = await Data.SerializeAsync<Player>(player);
                 byte[] playerBytes = await Data.CompressAsync(playerData);
                 packet.Write(playerBytes.Length);
                 packet.Write(playerBytes);
@@ -342,56 +342,13 @@ namespace Memewars.RealtimeNetworking.Server
             return response;
         }
 
-        private async static Task<Data.Player> GetPlayerDataAsync(long id)
+        private async static Task<Player> GetPlayerDataAsync(long id)
         {
-            Task<Data.Player> task = Task.Run(() =>
+            Task<Player> task = Task.Run(() =>
             {
-                return Retry.Do(() => _GetPlayerDataAsync(id), TimeSpan.FromSeconds(0.1), 1, false);
+                return Retry.Do(() => Account.Get(id), TimeSpan.FromSeconds(0.1), 1, false);
             });
             return await task;
-        }
-
-        private static Data.Player _GetPlayerDataAsync(long id)
-        {
-            Data.Player data = new Data.Player();
-            using (NpgsqlConnection connection = GetDbConnection())
-            {
-                string query = String.Format("SELECT id, name, gems, trophies, banned, shield, level, xp, clan_join_timer, clan_id, clan_rank, war_id, NOW() at time zone 'utc' AS now_time, email, map_layout, shld_cldn_1, shld_cldn_2, shld_cldn_3 FROM accounts WHERE id = {0};", id);
-                using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                {
-                    using (NpgsqlDataReader reader = command.ExecuteReader())
-                    {
-                        if (reader.HasRows)
-                        {
-                            while (reader.Read())
-                            {
-                                data.id = id;
-                                data.name = reader["name"].ToString();
-                                data.email = reader["email"].ToString();
-                                int.TryParse(reader["gems"].ToString(), out data.gems);
-                                int.TryParse(reader["trophies"].ToString(), out data.trophies);
-                                int ban = 1;
-                                int.TryParse(reader["banned"].ToString(), out ban);
-                                data.banned = ban > 0;
-                                DateTime.TryParse(reader["now_time"].ToString(), out data.nowTime);
-                                DateTime.TryParse(reader["shield"].ToString(), out data.shield);
-                                DateTime.TryParse(reader["clan_join_timer"].ToString(), out data.clanTimer);
-                                DateTime.TryParse(reader["shld_cldn_1"].ToString(), out data.shield1);
-                                DateTime.TryParse(reader["shld_cldn_2"].ToString(), out data.shield2);
-                                DateTime.TryParse(reader["shld_cldn_3"].ToString(), out data.shield3);
-                                int.TryParse(reader["level"].ToString(), out data.level);
-                                int.TryParse(reader["xp"].ToString(), out data.xp);
-                                long.TryParse(reader["clan_id"].ToString(), out data.clanID);
-                                int.TryParse(reader["clan_rank"].ToString(), out data.clanRank);
-                                long.TryParse(reader["war_id"].ToString(), out data.warID);
-                                int.TryParse(reader["map_layout"].ToString(), out data.layout);
-                            }
-                        }
-                    }
-                }
-                connection.Close();
-            }
-            return data;
         }
 
         public async static void LogOut(int id, string address)
@@ -866,7 +823,7 @@ namespace Memewars.RealtimeNetworking.Server
             {
                 if (gold > 0 || elixir > 0 || darkElixir > 0)
                 {
-                    List<Data.Building> buildings = new List<Data.Building>();
+                    List<Building> buildings = new List<Building>();
                     string query = String.Format("SELECT id, global_id, gold_storage, elixir_storage, dark_elixir_storage FROM buildings WHERE account_id = {0} AND global_id IN('townhall', 'goldstorage', 'elixirstorage', 'darkelixirstorage');", account_id);
                     using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                     {
@@ -876,8 +833,8 @@ namespace Memewars.RealtimeNetworking.Server
                             {
                                 while (reader.Read())
                                 {
-                                    Data.Building building = new Data.Building();
-                                    building.id = (Data.BuildingID)Enum.Parse(typeof(Data.BuildingID), reader["global_id"].ToString());
+                                    Building building = new Building();
+                                    building.id = (BuildingID)Enum.Parse(typeof(BuildingID), reader["global_id"].ToString());
                                     building.goldStorage = (int)Math.Floor(float.Parse(reader["gold_storage"].ToString()));
                                     building.elixirStorage = (int)Math.Floor(float.Parse(reader["elixir_storage"].ToString()));
                                     building.darkStorage = (int)Math.Floor(float.Parse(reader["dark_elixir_storage"].ToString()));
@@ -903,7 +860,7 @@ namespace Memewars.RealtimeNetworking.Server
                             int toSpendDark = 0;
                             switch (buildings[i].id)
                             {
-                                case Data.BuildingID.townhall:
+                                case BuildingID.townhall:
                                     if (spendGold < gold)
                                     {
                                         if (buildings[i].goldStorage >= (gold - spendGold))
@@ -941,7 +898,7 @@ namespace Memewars.RealtimeNetworking.Server
                                         spendDarkElixir += toSpendDark;
                                     }
                                     break;
-                                case Data.BuildingID.goldstorage:
+                                case BuildingID.goldstorage:
                                     if (spendGold < gold)
                                     {
                                         if (buildings[i].goldStorage >= (gold - spendGold))
@@ -955,7 +912,7 @@ namespace Memewars.RealtimeNetworking.Server
                                         spendGold += toSpendGold;
                                     }
                                     break;
-                                case Data.BuildingID.elixirstorage:
+                                case BuildingID.elixirstorage:
                                     if (spendElixir < elixir)
                                     {
                                         if (buildings[i].elixirStorage >= (elixir - spendElixir))
@@ -969,7 +926,7 @@ namespace Memewars.RealtimeNetworking.Server
                                         spendElixir += toSpendElixir;
                                     }
                                     break;
-                                case Data.BuildingID.darkelixirstorage:
+                                case BuildingID.darkelixirstorage:
                                     if (spendDarkElixir < darkElixir)
                                     {
                                         if (buildings[i].darkStorage >= (darkElixir - spendDarkElixir))
@@ -1035,24 +992,24 @@ namespace Memewars.RealtimeNetworking.Server
                         {
                             while (reader.Read())
                             {
-                                Data.BuildingID id = (Data.BuildingID)Enum.Parse(typeof(Data.BuildingID), reader["global_id"].ToString());
+                                BuildingID id = (BuildingID)Enum.Parse(typeof(BuildingID), reader["global_id"].ToString());
                                 int gold_storage = (int)Math.Floor(float.Parse(reader["gold_storage"].ToString()));
                                 int elixir_storage = (int)Math.Floor(float.Parse(reader["elixir_storage"].ToString()));
                                 int dark_elixir_storage = (int)Math.Floor(float.Parse(reader["dark_elixir_storage"].ToString()));
                                 switch (id)
                                 {
-                                    case Data.BuildingID.townhall:
+                                    case BuildingID.townhall:
                                         haveGold += gold_storage;
                                         haveElixir += elixir_storage;
                                         haveDarkElixir += dark_elixir_storage;
                                         break;
-                                    case Data.BuildingID.goldstorage:
+                                    case BuildingID.goldstorage:
                                         haveGold += gold_storage;
                                         break;
-                                    case Data.BuildingID.elixirstorage:
+                                    case BuildingID.elixirstorage:
                                         haveElixir += elixir_storage;
                                         break;
-                                    case Data.BuildingID.darkelixirstorage:
+                                    case BuildingID.darkelixirstorage:
                                         haveDarkElixir += dark_elixir_storage;
                                         break;
                                 }
@@ -1099,8 +1056,8 @@ namespace Memewars.RealtimeNetworking.Server
 
             if (gold > 0 || elixir > 0 || darkElixir > 0)
             {
-                List<Data.Building> storages = new List<Data.Building>();
-                string query = String.Format("SELECT buildings.id, buildings.global_id, buildings.gold_storage, buildings.elixir_storage, buildings.dark_elixir_storage, server_buildings.gold_capacity, server_buildings.elixir_capacity, server_buildings.dark_elixir_capacity FROM buildings LEFT JOIN server_buildings ON buildings.global_id = server_buildings.global_id AND buildings.level = server_buildings.level WHERE buildings.account_id = {0} AND buildings.global_id IN('{1}', '{2}', '{3}', '{4}') AND buildings.level > 0;", account_id, Data.BuildingID.townhall.ToString(), Data.BuildingID.goldstorage.ToString(), Data.BuildingID.elixirstorage.ToString(), Data.BuildingID.darkelixirstorage.ToString());
+                List<Building> storages = new List<Building>();
+                string query = String.Format("SELECT buildings.id, buildings.global_id, buildings.gold_storage, buildings.elixir_storage, buildings.dark_elixir_storage, server_buildings.gold_capacity, server_buildings.elixir_capacity, server_buildings.dark_elixir_capacity FROM buildings LEFT JOIN server_buildings ON buildings.global_id = server_buildings.global_id AND buildings.level = server_buildings.level WHERE buildings.account_id = {0} AND buildings.global_id IN('{1}', '{2}', '{3}', '{4}') AND buildings.level > 0;", account_id, BuildingID.townhall.ToString(), BuildingID.goldstorage.ToString(), BuildingID.elixirstorage.ToString(), BuildingID.darkelixirstorage.ToString());
                 using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                 {
                     using (NpgsqlDataReader reader = command.ExecuteReader())
@@ -1109,9 +1066,9 @@ namespace Memewars.RealtimeNetworking.Server
                         {
                             while (reader.Read())
                             {
-                                Data.Building building = new Data.Building();
+                                Building building = new Building();
                                 building.databaseID = long.Parse(reader["id"].ToString());
-                                building.id = (Data.BuildingID)Enum.Parse(typeof(Data.BuildingID), reader["global_id"].ToString());
+                                building.id = (BuildingID)Enum.Parse(typeof(BuildingID), reader["global_id"].ToString());
                                 building.goldStorage = (int)Math.Floor(float.Parse(reader["gold_storage"].ToString()));
                                 building.elixirStorage = (int)Math.Floor(float.Parse(reader["elixir_storage"].ToString()));
                                 building.darkStorage = (int)Math.Floor(float.Parse(reader["dark_elixir_storage"].ToString()));
@@ -1146,18 +1103,18 @@ namespace Memewars.RealtimeNetworking.Server
 
                         switch (storages[i].id)
                         {
-                            case Data.BuildingID.townhall:
+                            case BuildingID.townhall:
                                 addGold = (goldSpace >= remainedGold) ? remainedGold : goldSpace;
                                 addElixir = (elixirSpace >= remainedElixir) ? remainedElixir : elixirSpace;
                                 addDark = (darkSpace >= remainedDatk) ? remainedDatk : darkSpace;
                                 break;
-                            case Data.BuildingID.goldstorage:
+                            case BuildingID.goldstorage:
                                 addGold = (goldSpace >= remainedGold) ? remainedGold : goldSpace;
                                 break;
-                            case Data.BuildingID.elixirstorage:
+                            case BuildingID.elixirstorage:
                                 addElixir = (elixirSpace >= remainedElixir) ? remainedElixir : elixirSpace;
                                 break;
-                            case Data.BuildingID.darkelixirstorage:
+                            case BuildingID.darkelixirstorage:
                                 addDark = (darkSpace >= remainedDatk) ? remainedDatk : darkSpace;
                                 break;
                         }
@@ -1380,7 +1337,7 @@ namespace Memewars.RealtimeNetworking.Server
             int response = 0;
             using (NpgsqlConnection connection = GetDbConnection())
             {
-                Data.Building building = null;
+                Building building = null;
                 DateTime now = DateTime.Now;
                 string query = String.Format("SELECT level, global_id, boost, NOW() at time zone 'utc' as now FROM buildings WHERE id = {0} AND account_id = {1};", building_id, account_id);
                 using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
@@ -1389,12 +1346,12 @@ namespace Memewars.RealtimeNetworking.Server
                     {
                         if (reader.HasRows)
                         {
-                            building = new Data.Building();
+                            building = new Building();
                             while (reader.Read())
                             {
                                 DateTime.TryParse(reader["now"].ToString(), out now);
                                 DateTime.TryParse(reader["boost"].ToString(), out building.boost);
-                                building.id = (Data.BuildingID)Enum.Parse(typeof(Data.BuildingID), reader["global_id"].ToString());
+                                building.id = (BuildingID)Enum.Parse(typeof(BuildingID), reader["global_id"].ToString());
                                 int.TryParse(reader["level"].ToString(), out building.level);
                             }
                         }
@@ -1456,7 +1413,7 @@ namespace Memewars.RealtimeNetworking.Server
                 int gold = 0;
                 int elixir = 0;
                 int dark = 0;
-                string query = String.Format("SELECT buildings.gold_storage, buildings.elixir_storage, buildings.dark_elixir_storage, server_buildings.gold_capacity, server_buildings.elixir_capacity, server_buildings.dark_elixir_capacity FROM buildings LEFT JOIN server_buildings ON buildings.global_id = server_buildings.global_id AND buildings.level = server_buildings.level WHERE buildings.account_id = {0} AND buildings.global_id IN ('{1}', '{2}', '{3}', '{4}');", account_id, Data.BuildingID.townhall.ToString(), Data.BuildingID.goldstorage.ToString(), Data.BuildingID.elixirstorage.ToString(), Data.BuildingID.darkelixirstorage.ToString());
+                string query = String.Format("SELECT buildings.gold_storage, buildings.elixir_storage, buildings.dark_elixir_storage, server_buildings.gold_capacity, server_buildings.elixir_capacity, server_buildings.dark_elixir_capacity FROM buildings LEFT JOIN server_buildings ON buildings.global_id = server_buildings.global_id AND buildings.level = server_buildings.level WHERE buildings.account_id = {0} AND buildings.global_id IN ('{1}', '{2}', '{3}', '{4}');", account_id, BuildingID.townhall.ToString(), BuildingID.goldstorage.ToString(), BuildingID.elixirstorage.ToString(), BuildingID.darkelixirstorage.ToString());
                 using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                 {
                     using (NpgsqlDataReader reader = command.ExecuteReader())
@@ -1557,18 +1514,18 @@ namespace Memewars.RealtimeNetworking.Server
 
         #region Server Buildings
 
-        private async static Task<Data.ServerBuilding> GetServerBuildingAsync(string id, int level)
+        private async static Task<ServerBuilding> GetServerBuildingAsync(string id, int level)
         {
-            Task<Data.ServerBuilding> task = Task.Run(() =>
+            Task<ServerBuilding> task = Task.Run(() =>
             {
                 return Retry.Do(() => _GetServerBuildingAsync(id, level), TimeSpan.FromSeconds(0.1), 1, false);
             });
             return await task;
         }
 
-        private static Data.ServerBuilding _GetServerBuildingAsync(string id, int level)
+        private static ServerBuilding _GetServerBuildingAsync(string id, int level)
         {
-            Data.ServerBuilding data = null;
+            ServerBuilding data = null;
             using (NpgsqlConnection connection = GetDbConnection())
             {
                 string query = String.Format("SELECT id, req_gold, req_elixir, req_gems, req_dark_elixir, columns_count, rows_count, build_time, gained_xp FROM server_buildings WHERE global_id = '{0}' AND level = {1};", id, level);
@@ -1580,7 +1537,7 @@ namespace Memewars.RealtimeNetworking.Server
                         {
                             while (reader.Read())
                             {
-                                data = new Data.ServerBuilding();
+                                data = new ServerBuilding();
                                 data.id = id;
                                 long.TryParse(reader["id"].ToString(), out data.databaseID);
                                 int.TryParse(reader["req_gold"].ToString(), out data.requiredGold);
@@ -1601,9 +1558,9 @@ namespace Memewars.RealtimeNetworking.Server
             return data;
         }
 
-        private static List<Data.ServerBuilding> GetServerBuildings(NpgsqlConnection connection)
+        private static List<ServerBuilding> GetServerBuildings(NpgsqlConnection connection)
         {
-            List<Data.ServerBuilding> buildings = new List<Data.ServerBuilding>();
+            List<ServerBuilding> buildings = new List<ServerBuilding>();
             string query = String.Format("SELECT id, global_id, level, req_gold, req_elixir, req_gems, req_dark_elixir, columns_count, rows_count, build_time, gained_xp FROM server_buildings;");
             using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
             {
@@ -1613,9 +1570,9 @@ namespace Memewars.RealtimeNetworking.Server
                     {
                         while (reader.Read())
                         {
-                            Data.ServerBuilding building = new Data.ServerBuilding();
+                            ServerBuilding building = new ServerBuilding();
                             long.TryParse(reader["id"].ToString(), out building.databaseID);
-                            // building.id = (Data.BuildingID)Enum.Parse(typeof(Data.BuildingID), reader["global_id"].ToString());
+                            // building.id = (BuildingID)Enum.Parse(typeof(BuildingID), reader["global_id"].ToString());
                             building.id = reader["global_id"].ToString();
                             int.TryParse(reader["level"].ToString(), out building.level);
                             int.TryParse(reader["req_gold"].ToString(), out building.requiredGold);
@@ -1653,17 +1610,17 @@ namespace Memewars.RealtimeNetworking.Server
             return await task;
         }
 
-        private static void _UpdateBuildings(NpgsqlConnection connection, double deltaTime, Data.BuildingID buildingId)
+        private static void _UpdateBuildings(NpgsqlConnection connection, double deltaTime, BuildingID buildingId)
         {
             string storage_type = "";
             switch(buildingId) {
-                case Data.BuildingID.goldmine:
+                case BuildingID.goldmine:
                     storage_type = "gold";
                     break;
-                case Data.BuildingID.elixirmine:
+                case BuildingID.elixirmine:
                     storage_type = "elixir";
                     break;
-                case Data.BuildingID.darkelixirmine:
+                case BuildingID.darkelixirmine:
                     storage_type = "dark_elixir";
                     break;
             }
@@ -1701,7 +1658,7 @@ namespace Memewars.RealtimeNetworking.Server
                     AND buildings.global_id = server_buildings.global_id
                     AND buildings.level = server_buildings.level", 
                     storage_type,
-                    Data.BuildingID.goldmine.ToString()
+                    BuildingID.goldmine.ToString()
                 );
             using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
             {
@@ -1714,9 +1671,9 @@ namespace Memewars.RealtimeNetworking.Server
             using (NpgsqlConnection connection = GetDbConnection())
             {
                 try {
-                    _UpdateBuildings(connection, deltaTime, Data.BuildingID.goldmine);
-                    _UpdateBuildings(connection, deltaTime, Data.BuildingID.elixirmine);
-                    _UpdateBuildings(connection, deltaTime, Data.BuildingID.darkelixirmine);
+                    _UpdateBuildings(connection, deltaTime, BuildingID.goldmine);
+                    _UpdateBuildings(connection, deltaTime, BuildingID.elixirmine);
+                    _UpdateBuildings(connection, deltaTime, BuildingID.darkelixirmine);
                 }
 
                 catch(Exception exception) {
@@ -1764,16 +1721,16 @@ namespace Memewars.RealtimeNetworking.Server
                         {
                             while (reader.Read())
                             {
-                                Data.BuildingID global_id = (Data.BuildingID)Enum.Parse(typeof(Data.BuildingID), reader["global_id"].ToString());
+                                BuildingID global_id = (BuildingID)Enum.Parse(typeof(BuildingID), reader["global_id"].ToString());
                                 switch (global_id)
                                 {
-                                    case Data.BuildingID.goldmine:
+                                    case BuildingID.goldmine:
                                         amountGold = (int)Math.Floor(float.Parse(reader["gold_storage"].ToString()));
                                         break;
-                                    case Data.BuildingID.elixirmine:
+                                    case BuildingID.elixirmine:
                                         amountElixir = (int)Math.Floor(float.Parse(reader["elixir_storage"].ToString()));
                                         break;
-                                    case Data.BuildingID.darkelixirmine:
+                                    case BuildingID.darkelixirmine:
                                         amountDark = (int)Math.Floor(float.Parse(reader["dark_elixir_storage"].ToString()));
                                         break;
                                 }
@@ -1855,13 +1812,13 @@ namespace Memewars.RealtimeNetworking.Server
                     }
                 }
 
-                query = String.Format("DELETE FROM buildings WHERE is_constructing > 0 AND construction_time <= NOW() at time zone 'utc' AND global_id = '{0}'", Data.BuildingID.obstacle.ToString());
+                query = String.Format("DELETE FROM buildings WHERE is_constructing > 0 AND construction_time <= NOW() at time zone 'utc' AND global_id = '{0}'", BuildingID.obstacle.ToString());
                 using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                 {
                     command.ExecuteNonQuery();
                 }
 
-                query = String.Format("UPDATE buildings SET level = level + 1, is_constructing = 0, track_time = '{0}' WHERE is_constructing > 0 AND construction_time <= NOW() at time zone 'utc' AND global_id <> '{1}'", time, Data.BuildingID.obstacle.ToString());
+                query = String.Format("UPDATE buildings SET level = level + 1, is_constructing = 0, track_time = '{0}' WHERE is_constructing > 0 AND construction_time <= NOW() at time zone 'utc' AND global_id <> '{1}'", time, BuildingID.obstacle.ToString());
                 using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                 {
                     command.ExecuteNonQuery();
@@ -2070,7 +2027,7 @@ namespace Memewars.RealtimeNetworking.Server
                                     ) t2 
                                     WHERE t1.id = t2.id  
                                     AND housing <= capacity 
-                                    AND building_code = {1}", Data.BuildingID.spellfactory.ToString(), 0);
+                                    AND building_code = {1}", BuildingID.spellfactory.ToString(), 0);
             using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
             {
                 command.ExecuteNonQuery();
@@ -2118,7 +2075,7 @@ namespace Memewars.RealtimeNetworking.Server
                                     ) t2 
                                     WHERE t1.id = t2.id  
                                     AND housing <= capacity 
-                                    AND building_code = {1}", Data.BuildingID.darkspellfactory.ToString(), 1);
+                                    AND building_code = {1}", BuildingID.darkspellfactory.ToString(), 1);
 
             using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
             {
@@ -2211,9 +2168,9 @@ namespace Memewars.RealtimeNetworking.Server
 
                     long attacker_id = battles[i].battle.attacker;
                     long defender_id = battles[i].battle.defender;
-                    Data.BattleType battleType = battles[i].type;
+                    BattleType battleType = battles[i].type;
 
-                    if (battleType != Data.BattleType.war)
+                    if (battleType != BattleType.war)
                     {
                         query = String.Format("SELECT replay_path FROM battles WHERE defender_id = {0} AND id <= (SELECT id FROM (SELECT id FROM battles WHERE defender_id = {0} ORDER BY id DESC LIMIT 1 OFFSET 10) t);", defender_id);
                         using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
@@ -2293,7 +2250,7 @@ namespace Memewars.RealtimeNetworking.Server
                         AddResources(connection, attacker_id, lootedGold, lootedElixir, lootedDark, 0);
                     }
 
-                    if (battleType == Data.BattleType.normal)
+                    if (battleType == BattleType.normal)
                     {
                         ChangeTrophies(connection, attacker_id, trophies);
                         ChangeTrophies(connection, defender_id, -trophies);
@@ -2402,7 +2359,7 @@ namespace Memewars.RealtimeNetworking.Server
                         }
                         for (int j = 0; j < accounts.Count; j++)
                         {
-                            List<Data.Building> buildings = GetBuildings(connection, accounts[j]);
+                            List<Building> buildings = GetBuildings(connection, accounts[j]);
                             Random rnd = new Random();
                             int centerX = rnd.Next(0, Data.gridSize);
                             int centerY = rnd.Next(0, Data.gridSize);
@@ -2482,7 +2439,7 @@ namespace Memewars.RealtimeNetworking.Server
                             }
                             if (finalX >= 0 && finalY >= 0)
                             {
-                                query = String.Format("INSERT INTO buildings (global_id, account_id, x_position, y_position, level, track_time, x_war, y_war) VALUES('{0}', {1}, {2}, {3}, {4}, NOW() at time zone 'utc' - INTERVAL '1 HOUR', {5}, {6});", Data.BuildingID.obstacle.ToString(), accounts[j], finalX, finalY, rnd.Next(1, 6), finalX, finalY);
+                                query = String.Format("INSERT INTO buildings (global_id, account_id, x_position, y_position, level, track_time, x_war, y_war) VALUES('{0}', {1}, {2}, {3}, {4}, NOW() at time zone 'utc' - INTERVAL '1 HOUR', {5}, {6});", BuildingID.obstacle.ToString(), accounts[j], finalX, finalY, rnd.Next(1, 6), finalX, finalY);
                                 using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                                 {
                                     command.ExecuteNonQuery();
@@ -2510,18 +2467,18 @@ namespace Memewars.RealtimeNetworking.Server
 
         #region Buildings
 
-        private async static Task<Data.Building> GetBuildingAsync(long id, long account)
+        private async static Task<Building> GetBuildingAsync(long id, long account)
         {
-            Task<Data.Building> task = Task.Run(() =>
+            Task<Building> task = Task.Run(() =>
             {
                 return Retry.Do(() => _GetBuildingAsync(id, account), TimeSpan.FromSeconds(0.1), 1, false);
             });
             return await task;
         }
 
-        private static Data.Building _GetBuildingAsync(long id, long account)
+        private static Building _GetBuildingAsync(long id, long account)
         {
-            Data.Building building = null;
+            Building building = null;
             using (NpgsqlConnection connection = GetDbConnection())
             {
                 building = GetBuilding(connection, id, account);
@@ -2530,9 +2487,9 @@ namespace Memewars.RealtimeNetworking.Server
             return building;
         }
 
-        private static Data.Building GetBuilding(NpgsqlConnection connection, long id, long account)
+        private static Building GetBuilding(NpgsqlConnection connection, long id, long account)
         {
-            Data.Building building = null;
+            Building building = null;
             string query = String.Format("SELECT level, global_id FROM buildings WHERE id = {0} AND account_id = {1};", id, account);
             using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
             {
@@ -2540,10 +2497,10 @@ namespace Memewars.RealtimeNetworking.Server
                 {
                     if (reader.HasRows)
                     {
-                        building = new Data.Building();
+                        building = new Building();
                         while (reader.Read())
                         {
-                            building.id = (Data.BuildingID)Enum.Parse(typeof(Data.BuildingID), reader["global_id"].ToString());
+                            building.id = (BuildingID)Enum.Parse(typeof(BuildingID), reader["global_id"].ToString());
                             int.TryParse(reader["level"].ToString(), out building.level);
                         }
                     }
@@ -2552,9 +2509,9 @@ namespace Memewars.RealtimeNetworking.Server
             return building;
         }
 
-        private static List<Data.Building> GetBuildingsByGlobalID(string globalID, long account, NpgsqlConnection connection)
+        private static List<Building> GetBuildingsByGlobalID(string globalID, long account, NpgsqlConnection connection)
         {
-            List<Data.Building> buildings = new List<Data.Building>();
+            List<Building> buildings = new List<Building>();
             string query = String.Format("SELECT buildings.level, buildings.global_id, server_buildings.capacity FROM buildings LEFT JOIN server_buildings ON buildings.global_id = server_buildings.global_id AND buildings.level = server_buildings.level WHERE buildings.global_id = '{0}' AND buildings.account_id = {1};", globalID, account);
             using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
             {
@@ -2564,8 +2521,8 @@ namespace Memewars.RealtimeNetworking.Server
                     {
                         while (reader.Read())
                         {
-                            Data.Building building = new Data.Building();
-                            building.id = (Data.BuildingID)Enum.Parse(typeof(Data.BuildingID), reader["global_id"].ToString());
+                            Building building = new Building();
+                            building.id = (BuildingID)Enum.Parse(typeof(BuildingID), reader["global_id"].ToString());
                             int.TryParse(reader["level"].ToString(), out building.level);
                             int.TryParse(reader["capacity"].ToString(), out building.capacity);
                             buildings.Add(building);
@@ -2576,18 +2533,18 @@ namespace Memewars.RealtimeNetworking.Server
             return buildings;
         }
 
-        private async static Task<List<Data.Building>> GetBuildingsAsync(long account)
+        private async static Task<List<Building>> GetBuildingsAsync(long account)
         {
-            Task<List<Data.Building>> task = Task.Run(() =>
+            Task<List<Building>> task = Task.Run(() =>
             {
                 return Retry.Do(() => _GetBuildingsAsync(account), TimeSpan.FromSeconds(0.1), 1, false);
             });
             return await task;
         }
 
-        private static List<Data.Building> _GetBuildingsAsync(long account)
+        private static List<Building> _GetBuildingsAsync(long account)
         {
-            List<Data.Building> data = new List<Data.Building>();
+            List<Building> data = new List<Building>();
             using (NpgsqlConnection connection = GetDbConnection())
             {
                 data = GetBuildings(connection, account);
@@ -2596,9 +2553,9 @@ namespace Memewars.RealtimeNetworking.Server
             return data;
         }
 
-        private static List<Data.Building> GetBuildings(NpgsqlConnection connection, long account)
+        private static List<Building> GetBuildings(NpgsqlConnection connection, long account)
         {
-            List<Data.Building> data = new List<Data.Building>();
+            List<Building> data = new List<Building>();
             string query = String.Format("SELECT buildings.id, buildings.global_id, buildings.level, buildings.x_position, buildings.x_war, buildings.y_war, buildings.boost, buildings.gold_storage, buildings.elixir_storage, buildings.dark_elixir_storage, buildings.y_position, buildings.construction_time, buildings.is_constructing, buildings.construction_build_time, server_buildings.columns_count, server_buildings.rows_count, server_buildings.health, server_buildings.speed, server_buildings.radius, server_buildings.capacity, server_buildings.gold_capacity, server_buildings.elixir_capacity, server_buildings.dark_elixir_capacity, server_buildings.damage, server_buildings.target_type, server_buildings.blind_radius, server_buildings.splash_radius, server_buildings.projectile_speed FROM buildings LEFT JOIN server_buildings ON buildings.global_id = server_buildings.global_id AND buildings.level = server_buildings.level WHERE buildings.account_id = {0};", account);
             using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
             {
@@ -2608,8 +2565,8 @@ namespace Memewars.RealtimeNetworking.Server
                     {
                         while (reader.Read())
                         {
-                            Data.Building building = new Data.Building();
-                            building.id = (Data.BuildingID)Enum.Parse(typeof(Data.BuildingID), reader["global_id"].ToString());
+                            Building building = new Building();
+                            building.id = (BuildingID)Enum.Parse(typeof(BuildingID), reader["global_id"].ToString());
                             long.TryParse(reader["id"].ToString(), out building.databaseID);
                             int.TryParse(reader["level"].ToString(), out building.level);
                             int.TryParse(reader["x_position"].ToString(), out building.x);
@@ -2647,7 +2604,7 @@ namespace Memewars.RealtimeNetworking.Server
                             string tt = reader["target_type"].ToString();
                             if (!string.IsNullOrEmpty(tt))
                             {
-                                building.targetType = (Data.BuildingTargetType)Enum.Parse(typeof(Data.BuildingTargetType), tt);
+                                building.targetType = (BuildingTargetType)Enum.Parse(typeof(BuildingTargetType), tt);
                             }
                             int isConstructing = 0;
                             int.TryParse(reader["is_constructing"].ToString(), out isConstructing);
@@ -2670,13 +2627,13 @@ namespace Memewars.RealtimeNetworking.Server
             long account_id = Server.clients[id].account;
             Packet packet = new Packet();
             packet.Write((int)Terminal.RequestsID.BUILD);
-            Data.ServerBuilding building = await GetServerBuildingAsync(buildingID, 1);
+            ServerBuilding building = await GetServerBuildingAsync(buildingID, 1);
             int response = await PlaceBuildingAsync(account_id, building, x, y, layout, layoutID);
             packet.Write(response);
             Sender.TCP_Send(id, packet);
         }
 
-        private async static Task<int> PlaceBuildingAsync(long account_id, Data.ServerBuilding building, int x, int y, int layout, long layoutID)
+        private async static Task<int> PlaceBuildingAsync(long account_id, ServerBuilding building, int x, int y, int layout, long layoutID)
         {
             Task<int> task = Task.Run(() =>
             {
@@ -2685,7 +2642,7 @@ namespace Memewars.RealtimeNetworking.Server
             return await task;
         }
 
-        private static int _PlaceBuildingAsync(long account_id, Data.ServerBuilding building, int x, int y, int layout, long layoutID)
+        private static int _PlaceBuildingAsync(long account_id, ServerBuilding building, int x, int y, int layout, long layoutID)
         {
             int response = 0;
             using (NpgsqlConnection connection = GetDbConnection())
@@ -2697,7 +2654,7 @@ namespace Memewars.RealtimeNetworking.Server
                 }
                 else
                 {
-                    List<Data.Building> buildings = GetBuildings(connection, account_id);
+                    List<Building> buildings = GetBuildings(connection, account_id);
                     for (int i = 0; i < buildings.Count; i++)
                     {
                         int bX = (layout == 2) ? buildings[i].warX : buildings[i].x;
@@ -2802,14 +2759,14 @@ namespace Memewars.RealtimeNetworking.Server
                             else
                             {
                                 bool limited = false;
-                                Data.Building townHall = GetBuildingsByGlobalID("townhall", account_id, connection)[0];
+                                Building townHall = GetBuildingsByGlobalID("townhall", account_id, connection)[0];
                                 if (building.id == "townhall")
                                 {
 
                                 }
                                 else
                                 {
-                                    Data.BuildingCount limits = Data.GetBuildingLimits(townHall.level, building.id);
+                                    BuildingCount limits = Data.GetBuildingLimits(townHall.level, building.id);
                                     int haveCount = GetBuildingCount(account_id, building.id, connection);
                                     if (limits == null || haveCount >= limits.count)
                                     {
@@ -2888,8 +2845,8 @@ namespace Memewars.RealtimeNetworking.Server
             int response = 0;
             using (NpgsqlConnection connection = GetDbConnection())
             {
-                List<Data.Building> buildings = GetBuildings(connection, account_id);
-                Data.Building building = null;
+                List<Building> buildings = GetBuildings(connection, account_id);
+                Building building = null;
 
                 if (buildings != null && buildings.Count > 0)
                 {
@@ -3010,7 +2967,7 @@ namespace Memewars.RealtimeNetworking.Server
             Packet packet = new Packet();
             packet.Write((int)Terminal.RequestsID.UPGRADE);
             long account_id = Server.clients[id].account;
-            Data.Building building = await GetBuildingAsync(buildingID, account_id);
+            Building building = await GetBuildingAsync(buildingID, account_id);
             if (building == null)
             {
                 packet.Write(0);
@@ -3043,7 +3000,7 @@ namespace Memewars.RealtimeNetworking.Server
                 int reqElixir = 0;
                 int reqDarkElixir = 0;
                 int reqGems = 0;
-                string query = String.Format("SELECT req_gold, req_elixir, req_dark_elixir, req_gems, build_time FROM server_buildings WHERE global_id = '{0}' AND level = {1};", globalID, globalID == Data.BuildingID.obstacle.ToString() ? level : level + 1);
+                string query = String.Format("SELECT req_gold, req_elixir, req_dark_elixir, req_gems, build_time FROM server_buildings WHERE global_id = '{0}' AND level = {1};", globalID, globalID == BuildingID.obstacle.ToString() ? level : level + 1);
                 using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                 {
                     using (NpgsqlDataReader reader = command.ExecuteReader())
@@ -3074,16 +3031,16 @@ namespace Memewars.RealtimeNetworking.Server
                     else
                     {
                         bool limited = false;
-                        if(globalID != Data.BuildingID.obstacle.ToString())
+                        if(globalID != BuildingID.obstacle.ToString())
                         {
-                            Data.Building townHall = GetBuildingsByGlobalID("townhall", account_id, connection)[0];
+                            Building townHall = GetBuildingsByGlobalID("townhall", account_id, connection)[0];
                             if (globalID == "townhall")
                             {
 
                             }
                             else
                             {
-                                Data.BuildingCount limits = Data.GetBuildingLimits(townHall.level, globalID);
+                                BuildingCount limits = Data.GetBuildingLimits(townHall.level, globalID);
                                 int haveCount = GetBuildingCount(account_id, globalID, connection);
                                 if (haveCount >= limits.count && level >= limits.maxLevel)
                                 {
@@ -3127,7 +3084,7 @@ namespace Memewars.RealtimeNetworking.Server
             Packet packet = new Packet();
             packet.Write((int)Terminal.RequestsID.INSTANTBUILD);
             long account_id = Server.clients[id].account;
-            Data.Building building = await GetBuildingAsync(buildingID, account_id);
+            Building building = await GetBuildingAsync(buildingID, account_id);
             if (building == null)
             {
                 packet.Write(0);
@@ -3200,24 +3157,24 @@ namespace Memewars.RealtimeNetworking.Server
 
         #region Units
 
-        private async static Task<List<Data.Unit>> GetUnitsAsync(long account_id)
+        private async static Task<List<Unit>> GetUnitsAsync(long account_id)
         {
-            Task<List<Data.Unit>> task = Task.Run(() =>
+            Task<List<Unit>> task = Task.Run(() =>
             {
-                List<Data.Unit> units = null;
+                List<Unit> units = null;
                 units = Retry.Do(() => _GetUnitsAsync(account_id), TimeSpan.FromSeconds(0.1), 1, false);
                 if (units == null)
                 {
-                    units = new List<Data.Unit>();
+                    units = new List<Unit>();
                 }
                 return units;
             });
             return await task;
         }
 
-        private static List<Data.Unit> _GetUnitsAsync(long account_id)
+        private static List<Unit> _GetUnitsAsync(long account_id)
         {
-            List<Data.Unit> units = new List<Data.Unit>();
+            List<Unit> units = new List<Unit>();
             using (NpgsqlConnection connection = GetDbConnection())
             {
                 units = GetUnits(account_id, connection);
@@ -3226,9 +3183,9 @@ namespace Memewars.RealtimeNetworking.Server
             return units;
         }
 
-        private static List<Data.Unit> GetUnits(long account, NpgsqlConnection connection)
+        private static List<Unit> GetUnits(long account, NpgsqlConnection connection)
         {
-            List<Data.Unit> data = new List<Data.Unit>();
+            List<Unit> data = new List<Unit>();
             string query = String.Format("SELECT units.id, units.global_id, units.level, units.trained, units.ready, units.trained_time, server_units.health, server_units.train_time, server_units.housing, server_units.attack_range, server_units.attack_speed, server_units.move_speed, server_units.damage, server_units.move_type, server_units.target_priority, server_units.priority_multiplier FROM units LEFT JOIN server_units ON units.global_id = server_units.global_id AND units.level = server_units.level WHERE units.account_id = {0};", account);
             using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
             {
@@ -3238,8 +3195,8 @@ namespace Memewars.RealtimeNetworking.Server
                     {
                         while (reader.Read())
                         {
-                            Data.Unit unit = new Data.Unit();
-                            unit.id = (Data.UnitID)Enum.Parse(typeof(Data.UnitID), reader["global_id"].ToString());
+                            Unit unit = new Unit();
+                            unit.id = (UnitID)Enum.Parse(typeof(UnitID), reader["global_id"].ToString());
                             long.TryParse(reader["id"].ToString(), out unit.databaseID);
                             int.TryParse(reader["level"].ToString(), out unit.level);
                             int.TryParse(reader["health"].ToString(), out unit.health);
@@ -3252,8 +3209,8 @@ namespace Memewars.RealtimeNetworking.Server
                             float.TryParse(reader["move_speed"].ToString(), out unit.moveSpeed);
                             float.TryParse(reader["attack_range"].ToString(), out unit.attackRange);
 
-                            unit.movement = (Data.UnitMoveType)Enum.Parse(typeof(Data.UnitMoveType), reader["move_type"].ToString());
-                            unit.priority = (Data.TargetPriority)Enum.Parse(typeof(Data.TargetPriority), reader["target_priority"].ToString());
+                            unit.movement = (UnitMoveType)Enum.Parse(typeof(UnitMoveType), reader["move_type"].ToString());
+                            unit.priority = (TargetPriority)Enum.Parse(typeof(TargetPriority), reader["target_priority"].ToString());
                             float.TryParse(reader["priority_multiplier"].ToString(), out unit.priorityMultiplier);
 
                             int isTrue = 0;
@@ -3305,7 +3262,7 @@ namespace Memewars.RealtimeNetworking.Server
                 if (unit != null)
                 {
                     int capacity = 0;
-                    List<Data.Building> barracks = GetBuildingsByGlobalID(Data.BuildingID.barracks.ToString(), account_id, connection);
+                    List<Building> barracks = GetBuildingsByGlobalID(BuildingID.barracks.ToString(), account_id, connection);
                     for (int i = 0; i < barracks.Count; i++)
                     {
                         capacity += barracks[i].capacity;
@@ -3370,7 +3327,7 @@ namespace Memewars.RealtimeNetworking.Server
                         while (reader.Read())
                         {
                             Data.ServerUnit unit = new Data.ServerUnit();
-                            unit.id = (Data.UnitID)Enum.Parse(typeof(Data.UnitID), reader["global_id"].ToString());
+                            unit.id = (UnitID)Enum.Parse(typeof(UnitID), reader["global_id"].ToString());
                             int.TryParse(reader["level"].ToString(), out unit.level);
                             int.TryParse(reader["req_gold"].ToString(), out unit.requiredGold);
                             int.TryParse(reader["req_elixir"].ToString(), out unit.requiredElixir);
@@ -3406,7 +3363,7 @@ namespace Memewars.RealtimeNetworking.Server
                         while (reader.Read())
                         {
                             unit = new Data.ServerUnit();
-                            unit.id = (Data.UnitID)Enum.Parse(typeof(Data.UnitID), reader["global_id"].ToString());
+                            unit.id = (UnitID)Enum.Parse(typeof(UnitID), reader["global_id"].ToString());
                             int.TryParse(reader["level"].ToString(), out unit.level);
                             int.TryParse(reader["req_gold"].ToString(), out unit.requiredGold);
                             int.TryParse(reader["req_elixir"].ToString(), out unit.requiredElixir);
@@ -3472,9 +3429,9 @@ namespace Memewars.RealtimeNetworking.Server
             }
         }
 
-        private static Data.Unit GetUnit(NpgsqlConnection connection, long database_id, long account_id)
+        private static Unit GetUnit(NpgsqlConnection connection, long database_id, long account_id)
         {
-            Data.Unit unit = null;
+            Unit unit = null;
             string query = String.Format("SELECT units.id, units.global_id, units.level, units.trained, units.ready, units.trained_time, server_units.health, server_units.train_time, server_units.housing, server_units.attack_range, server_units.attack_speed, server_units.move_speed, server_units.damage, server_units.move_type, server_units.target_priority, server_units.priority_multiplier FROM units LEFT JOIN server_units ON units.global_id = server_units.global_id AND units.level = server_units.level WHERE units.id = {0} AND units.account_id = {1};", database_id, account_id);
             using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
             {
@@ -3484,8 +3441,8 @@ namespace Memewars.RealtimeNetworking.Server
                     {
                         while (reader.Read())
                         {
-                            unit = new Data.Unit();
-                            unit.id = (Data.UnitID)Enum.Parse(typeof(Data.UnitID), reader["global_id"].ToString());
+                            unit = new Unit();
+                            unit.id = (UnitID)Enum.Parse(typeof(UnitID), reader["global_id"].ToString());
                             long.TryParse(reader["id"].ToString(), out unit.databaseID);
                             int.TryParse(reader["level"].ToString(), out unit.level);
                             int.TryParse(reader["health"].ToString(), out unit.health);
@@ -3498,8 +3455,8 @@ namespace Memewars.RealtimeNetworking.Server
                             float.TryParse(reader["move_speed"].ToString(), out unit.moveSpeed);
                             float.TryParse(reader["attack_range"].ToString(), out unit.attackRange);
 
-                            unit.movement = (Data.UnitMoveType)Enum.Parse(typeof(Data.UnitMoveType), reader["move_type"].ToString());
-                            unit.priority = (Data.TargetPriority)Enum.Parse(typeof(Data.TargetPriority), reader["target_priority"].ToString());
+                            unit.movement = (UnitMoveType)Enum.Parse(typeof(UnitMoveType), reader["move_type"].ToString());
+                            unit.priority = (TargetPriority)Enum.Parse(typeof(TargetPriority), reader["target_priority"].ToString());
                             float.TryParse(reader["priority_multiplier"].ToString(), out unit.priorityMultiplier);
 
                             int isTrue = 0;
@@ -3538,7 +3495,7 @@ namespace Memewars.RealtimeNetworking.Server
                     opponent.buildings = await GetBuildingsAsync(target);
                     if (opponent.buildings != null)
                     {
-                        opponent.buildings = await SetBuildingsPercentAsync(opponent.buildings, Data.BattleType.normal);
+                        opponent.buildings = await SetBuildingsPercentAsync(opponent.buildings, BattleType.normal);
                         if (opponent.buildings != null)
                         {
                             packet.Write(target);
@@ -3604,7 +3561,7 @@ namespace Memewars.RealtimeNetworking.Server
                 if (id > 0)
                 {
                     int townHallLevel = 1;
-                    query = String.Format("SELECT level FROM buildings WHERE account_id = {0} AND global_id = '{1}';", account_id, Data.BuildingID.townhall.ToString());
+                    query = String.Format("SELECT level FROM buildings WHERE account_id = {0} AND global_id = '{1}';", account_id, BuildingID.townhall.ToString());
                     using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                     {
                         using (NpgsqlDataReader reader = command.ExecuteReader())
@@ -3668,28 +3625,28 @@ namespace Memewars.RealtimeNetworking.Server
             }
         }
 
-        private async static Task<List<Data.Building>> SetBuildingsPercentAsync(List<Data.Building> buildings, Data.BattleType battleType)
+        private async static Task<List<Building>> SetBuildingsPercentAsync(List<Building> buildings, BattleType battleType)
         {
-            Task<List<Data.Building>> task = Task.Run(() =>
+            Task<List<Building>> task = Task.Run(() =>
             {
                 return Retry.Do(() => _SetBuildingsPercentAsync(buildings, battleType), TimeSpan.FromSeconds(0.1), 10, false);
             });
             return await task;
         }
 
-        private static List<Data.Building> _SetBuildingsPercentAsync(List<Data.Building> buildings, Data.BattleType battleType)
+        private static List<Building> _SetBuildingsPercentAsync(List<Building> buildings, BattleType battleType)
         {
             double count = 0;
             for (int i = 0; i < buildings.Count; i++)
             {
-                if (buildings[i].id != Data.BuildingID.wall && (battleType == Data.BattleType.war && buildings[i].warX < 0 && buildings[i].warY < 0) == false && Battle.IsBuildingCanBeAttacked(buildings[i].id))
+                if (buildings[i].id != BuildingID.wall && (battleType == BattleType.war && buildings[i].warX < 0 && buildings[i].warY < 0) == false && Battle.IsBuildingCanBeAttacked(buildings[i].id))
                 {
                     count += (buildings[i].rows * buildings[i].columns);
                 }
             }
             for (int i = 0; i < buildings.Count; i++)
             {
-                if (buildings[i].id != Data.BuildingID.wall && (battleType == Data.BattleType.war && buildings[i].warX < 0 && buildings[i].warY < 0) == false && Battle.IsBuildingCanBeAttacked(buildings[i].id))
+                if (buildings[i].id != BuildingID.wall && (battleType == BattleType.war && buildings[i].warX < 0 && buildings[i].warY < 0) == false && Battle.IsBuildingCanBeAttacked(buildings[i].id))
                 {
                     buildings[i].percentage = (double)(buildings[i].rows * buildings[i].columns) / count;
                 }
@@ -3701,7 +3658,7 @@ namespace Memewars.RealtimeNetworking.Server
             return buildings;
         }
 
-        public async static void StartBattle(int id, byte[] bytes, Data.BattleType type)
+        public async static void StartBattle(int id, byte[] bytes, BattleType type)
         {
             long account_id = Server.clients[id].account;
             bool canAttack = true;
@@ -3714,7 +3671,7 @@ namespace Memewars.RealtimeNetworking.Server
 
             for (int i = 0; i < battles.Count; i++)
             {
-                if ((type == Data.BattleType.normal && (battles[i].battle.attacker == account_id || battles[i].battle.defender == defender)) || (type == Data.BattleType.war && battles[i].battle.attacker == account_id))
+                if ((type == BattleType.normal && (battles[i].battle.attacker == account_id || battles[i].battle.defender == defender)) || (type == BattleType.war && battles[i].battle.attacker == account_id))
                 {
                     canAttack = false;
                     break;
@@ -3731,17 +3688,17 @@ namespace Memewars.RealtimeNetworking.Server
                     opponentServer.buildings = await SetBuildingsPercentAsync(opponentServer.buildings, type);
                     if (opponentServer.buildings == null)
                     {
-                        opponentServer.buildings = new List<Data.Building>();
+                        opponentServer.buildings = new List<Building>();
                     }
                 }
                 else
                 {
-                    opponentServer.buildings = new List<Data.Building>();
+                    opponentServer.buildings = new List<Building>();
                 }
 
                 if (opponentServer.buildings.Count == opponentClent.buildings.Count)
                 {
-                    buildings = Data.BuildingsToBattleBuildings(opponentServer.buildings, type);
+                    buildings = Building.ConvertToBattleBuildings(opponentServer.buildings, type);
                     if(buildings == null)
                     {
                         match = false;
@@ -3759,12 +3716,12 @@ namespace Memewars.RealtimeNetworking.Server
             packet.Write(canAttack);
             if (match && canAttack)
             {
-                if (type == Data.BattleType.normal)
+                if (type == BattleType.normal)
                 {
                     await RemoveShieldAsync(account_id);
                 }
-                Data.Player attackerData = await GetPlayerDataAsync(account_id);
-                Data.Player defenderData = await GetPlayerDataAsync(defender);
+                Player attackerData = await GetPlayerDataAsync(account_id);
+                Player defenderData = await GetPlayerDataAsync(defender);
                 var trophies = Data.GetBattleTrophies(attackerData.trophies, defenderData.trophies);
                 Data.BattleData battle = new Data.BattleData();
                 battle.type = type;
@@ -3791,13 +3748,13 @@ namespace Memewars.RealtimeNetworking.Server
         {
             Packet packet = new Packet();
             packet.Write((int)Terminal.RequestsID.SCOUT);
-            Data.Player player = await GetPlayerDataAsync(target);
+            Player player = await GetPlayerDataAsync(target);
             if (player != null)
             {
                 packet.Write(1);
                 packet.Write(type);
                 player.buildings = await GetBuildingsAsync(target);
-                string data = await Data.SerializeAsync<Data.Player>(player);
+                string data = await Data.SerializeAsync<Player>(player);
                 byte[] bytes = await Data.CompressAsync(data);
                 packet.Write(bytes.Length);
                 packet.Write(bytes);
@@ -3901,8 +3858,8 @@ namespace Memewars.RealtimeNetworking.Server
                 byte[] bytes = await Data.CompressAsync(data);
                 packet.Write(bytes.Length);
                 packet.Write(bytes);
-                Data.Player player = await GetPlayerDataAsync(account_id == report.attacker ? report.defender : report.attacker);
-                data = await Data.SerializeAsync<Data.Player>(player);
+                Player player = await GetPlayerDataAsync(account_id == report.attacker ? report.defender : report.attacker);
+                data = await Data.SerializeAsync<Player>(player);
                 bytes = await Data.CompressAsync(data);
                 packet.Write(bytes.Length);
                 packet.Write(bytes);
@@ -4544,9 +4501,9 @@ namespace Memewars.RealtimeNetworking.Server
 
         #region Spell
 
-        private static List<Data.ServerSpell> GetServerSpells(NpgsqlConnection connection)
+        private static List<ServerSpell> GetServerSpells(NpgsqlConnection connection)
         {
-            List<Data.ServerSpell> units = new List<Data.ServerSpell>();
+            List<ServerSpell> units = new List<ServerSpell>();
             string query = String.Format("SELECT id, global_id, level, req_gold, req_elixir, req_gem, req_dark_elixir, brew_time, housing, radius, pulses_count, pulses_duration, pulses_value, pulses_value_2, research_time, research_gold, research_elixir, research_dark_elixir, research_gems, research_xp FROM server_spells;");
             using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
             {
@@ -4556,9 +4513,9 @@ namespace Memewars.RealtimeNetworking.Server
                     {
                         while (reader.Read())
                         {
-                            Data.ServerSpell spell = new Data.ServerSpell();
+                            ServerSpell spell = new ServerSpell();
                             long.TryParse(reader["id"].ToString(), out spell.databaseID);
-                            spell.id = (Data.SpellID)Enum.Parse(typeof(Data.SpellID), reader["global_id"].ToString());
+                            spell.id = (SpellID)Enum.Parse(typeof(SpellID), reader["global_id"].ToString());
                             int.TryParse(reader["level"].ToString(), out spell.level);
                             int.TryParse(reader["req_gold"].ToString(), out spell.requiredGold);
                             int.TryParse(reader["req_elixir"].ToString(), out spell.requiredElixir);
@@ -4615,11 +4572,11 @@ namespace Memewars.RealtimeNetworking.Server
                 {
                     level = research.level;
                 }
-                Data.ServerSpell spell = GetServerSpell(connection, globalID, level);
+                ServerSpell spell = GetServerSpell(connection, globalID, level);
                 if (spell != null)
                 {
                     int capacity = 0;
-                    List<Data.Building> spellFactory = GetBuildingsByGlobalID(Data.BuildingID.spellfactory.ToString(), account_id, connection);
+                    List<Building> spellFactory = GetBuildingsByGlobalID(BuildingID.spellfactory.ToString(), account_id, connection);
                     for (int i = 0; i < spellFactory.Count; i++)
                     {
                         capacity += spellFactory[i].capacity;
@@ -4671,9 +4628,9 @@ namespace Memewars.RealtimeNetworking.Server
             return response;
         }
 
-        private static Data.ServerSpell GetServerSpell(NpgsqlConnection connection, string id, int level)
+        private static ServerSpell GetServerSpell(NpgsqlConnection connection, string id, int level)
         {
-            Data.ServerSpell spell = null;
+            ServerSpell spell = null;
             string query = String.Format("SELECT id, global_id, level, req_gold, req_elixir, req_gem, req_dark_elixir, brew_time, housing, radius, pulses_count, pulses_duration, pulses_value, pulses_value_2, research_time, research_gold, research_elixir, research_dark_elixir, research_gems, research_xp FROM server_spells WHERE global_id = '{0}' AND level = {1};", id, level);
             using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
             {
@@ -4683,9 +4640,9 @@ namespace Memewars.RealtimeNetworking.Server
                     {
                         while (reader.Read())
                         {
-                            spell = new Data.ServerSpell();
+                            spell = new ServerSpell();
                             long.TryParse(reader["id"].ToString(), out spell.databaseID);
-                            spell.id = (Data.SpellID)Enum.Parse(typeof(Data.SpellID), reader["global_id"].ToString());
+                            spell.id = (SpellID)Enum.Parse(typeof(SpellID), reader["global_id"].ToString());
                             int.TryParse(reader["level"].ToString(), out spell.level);
                             int.TryParse(reader["req_gold"].ToString(), out spell.requiredGold);
                             int.TryParse(reader["req_elixir"].ToString(), out spell.requiredElixir);
@@ -4746,18 +4703,18 @@ namespace Memewars.RealtimeNetworking.Server
             return id;
         }
 
-        private async static Task<List<Data.Spell>> GetSpellsAsync(long account_id)
+        private async static Task<List<Spell>> GetSpellsAsync(long account_id)
         {
-            Task<List<Data.Spell>> task = Task.Run(() =>
+            Task<List<Spell>> task = Task.Run(() =>
             {
                 return Retry.Do(() => _GetSpellsAsync(account_id), TimeSpan.FromSeconds(0.1), 1, false);
             });
             return await task;
         }
 
-        private static List<Data.Spell> _GetSpellsAsync(long account_id)
+        private static List<Spell> _GetSpellsAsync(long account_id)
         {
-            List<Data.Spell> spells = new List<Data.Spell>();
+            List<Spell> spells = new List<Spell>();
             using (NpgsqlConnection connection = GetDbConnection())
             {
                 string query = String.Format("SELECT spells.id, spells.global_id, spells.level, spells.brewed, spells.ready, spells.brewed_time, server_spells.brew_time, server_spells.housing FROM spells LEFT JOIN server_spells ON spells.global_id = server_spells.global_id AND spells.level = server_spells.level WHERE spells.account_id = {0};", account_id);
@@ -4769,8 +4726,8 @@ namespace Memewars.RealtimeNetworking.Server
                         {
                             while (reader.Read())
                             {
-                                Data.Spell spell = new Data.Spell();
-                                spell.id = (Data.SpellID)Enum.Parse(typeof(Data.SpellID), reader["global_id"].ToString());
+                                Spell spell = new Spell();
+                                spell.id = (SpellID)Enum.Parse(typeof(SpellID), reader["global_id"].ToString());
                                 long.TryParse(reader["id"].ToString(), out spell.databaseID);
                                 int.TryParse(reader["level"].ToString(), out spell.level);
                                 int.TryParse(reader["housing"].ToString(), out spell.hosing);
@@ -4794,9 +4751,9 @@ namespace Memewars.RealtimeNetworking.Server
             return spells;
         }
 
-        private static Data.Spell GetSpell(NpgsqlConnection connection, long database_id, long account_id, bool get_server = false)
+        private static Spell GetSpell(NpgsqlConnection connection, long database_id, long account_id, bool get_server = false)
         {
-            Data.Spell spell = null;
+            Spell spell = null;
             string query = String.Format("SELECT spells.id, spells.global_id, spells.level, spells.brewed, spells.ready, spells.brewed_time, server_spells.brew_time, server_spells.housing FROM spells LEFT JOIN server_spells ON spells.global_id = server_spells.global_id AND spells.level = server_spells.level WHERE spells.id = {0} AND spells.account_id = {1};", database_id, account_id);
             using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
             {
@@ -4806,8 +4763,8 @@ namespace Memewars.RealtimeNetworking.Server
                     {
                         while (reader.Read())
                         {
-                            spell = new Data.Spell();
-                            spell.id = (Data.SpellID)Enum.Parse(typeof(Data.SpellID), reader["global_id"].ToString());
+                            spell = new Spell();
+                            spell.id = (SpellID)Enum.Parse(typeof(SpellID), reader["global_id"].ToString());
                             long.TryParse(reader["id"].ToString(), out spell.databaseID);
                             int.TryParse(reader["level"].ToString(), out spell.level);
                             int.TryParse(reader["housing"].ToString(), out spell.hosing);
@@ -4984,7 +4941,7 @@ namespace Memewars.RealtimeNetworking.Server
                     }
                     else if (type == Data.ResearchType.spell)
                     {
-                        Data.ServerSpell spell = GetServerSpell(connection, global_id, research.level + 1);
+                        ServerSpell spell = GetServerSpell(connection, global_id, research.level + 1);
                         if (spell != null)
                         {
                             if (SpendResources(connection, account_id, spell.researchGold, spell.researchElixir, spell.researchGems, spell.researchDarkElixir))

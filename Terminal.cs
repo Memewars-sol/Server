@@ -5,6 +5,7 @@ using Newtonsoft.Json;
 using Chaos.NaCl;
 using System.Text;
 using SimpleBase;
+using Models;
 using System.Diagnostics;
 
 namespace Memewars.RealtimeNetworking.Server
@@ -202,7 +203,7 @@ namespace Memewars.RealtimeNetworking.Server
                         int bytesLength = packet.ReadInt();
                         byte[] bytes = packet.ReadBytes(bytesLength);
                         int battleType = packet.ReadInt();
-                        Database.StartBattle(clientID, bytes, (Data.BattleType)battleType);
+                        Database.StartBattle(clientID, bytes, (BattleType)battleType);
                         break;
                     case RequestsID.BATTLEFRAME:
                         int bfl = packet.ReadInt();

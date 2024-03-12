@@ -2,16 +2,40 @@ using System.Threading.Tasks;
 using System;
 using Npgsql;
 using Memewars.RealtimeNetworking.Server;
-using System.Data;
 using System.Collections.Generic;
-using System.Drawing;
-using System.IO;
-using System.Linq;
-using System.Net.Http;
 using Newtonsoft.Json;
 using WebUtils;
 
 namespace Models {
+
+        public class Player
+        {
+            public long id = 0;
+            public string name = "Player";
+            public int gems = 0;
+            public int trophies = 0;
+            public bool banned = false;
+            public DateTime nowTime;
+            public DateTime shield;
+            public int xp = 0;
+            public int level = 1;
+            public DateTime clanTimer;
+            public long clanID = 0;
+            public int clanRank = 0;
+            public long warID = 0;
+            public string email = "";
+            public int layout = 0;
+            public DateTime shield1;
+            public DateTime shield2;
+            public DateTime shield3;
+            public long guild_id;
+            public string guild_name;
+            public string guild_logo;
+            public List<Building> buildings = new List<Building>();
+            public List<Unit> units = new List<Unit>();
+            public List<Spell> spells = new List<Spell>();
+        }
+
     public class Account {
         public long Id { get; set; }
         public string Address { get; set; }
@@ -24,8 +48,8 @@ namespace Models {
 
             if (gold > 0 || elixir > 0 || darkElixir > 0)
             {
-                List<Data.Building> storages = new List<Data.Building>();
-                string query = String.Format("SELECT buildings.id, buildings.global_id, buildings.gold_storage, buildings.elixir_storage, buildings.dark_elixir_storage, server_buildings.gold_capacity, server_buildings.elixir_capacity, server_buildings.dark_elixir_capacity FROM buildings LEFT JOIN server_buildings ON buildings.global_id = server_buildings.global_id AND buildings.level = server_buildings.level WHERE buildings.account_id = {0} AND buildings.global_id IN('{1}', '{2}', '{3}', '{4}') AND buildings.level > 0;", Id, Data.BuildingID.townhall.ToString(), Data.BuildingID.goldstorage.ToString(), Data.BuildingID.elixirstorage.ToString(), Data.BuildingID.darkelixirstorage.ToString());
+                List<Building> storages = new List<Building>();
+                string query = String.Format("SELECT buildings.id, buildings.global_id, buildings.gold_storage, buildings.elixir_storage, buildings.dark_elixir_storage, server_buildings.gold_capacity, server_buildings.elixir_capacity, server_buildings.dark_elixir_capacity FROM buildings LEFT JOIN server_buildings ON buildings.global_id = server_buildings.global_id AND buildings.level = server_buildings.level WHERE buildings.account_id = {0} AND buildings.global_id IN('{1}', '{2}', '{3}', '{4}') AND buildings.level > 0;", Id, BuildingID.townhall.ToString(), BuildingID.goldstorage.ToString(), BuildingID.elixirstorage.ToString(), BuildingID.darkelixirstorage.ToString());
                 using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                 {
                     using (NpgsqlDataReader reader = command.ExecuteReader())
@@ -34,9 +58,9 @@ namespace Models {
                         {
                             while (reader.Read())
                             {
-                                Data.Building building = new Data.Building();
+                                Building building = new Building();
                                 building.databaseID = long.Parse(reader["id"].ToString());
-                                building.id = (Data.BuildingID)Enum.Parse(typeof(Data.BuildingID), reader["global_id"].ToString());
+                                building.id = (BuildingID)Enum.Parse(typeof(BuildingID), reader["global_id"].ToString());
                                 building.goldStorage = (int)Math.Floor(float.Parse(reader["gold_storage"].ToString()));
                                 building.elixirStorage = (int)Math.Floor(float.Parse(reader["elixir_storage"].ToString()));
                                 building.darkStorage = (int)Math.Floor(float.Parse(reader["dark_elixir_storage"].ToString()));
@@ -71,18 +95,18 @@ namespace Models {
 
                         switch (storages[i].id)
                         {
-                            case Data.BuildingID.townhall:
+                            case BuildingID.townhall:
                                 addGold = (goldSpace >= remainedGold) ? remainedGold : goldSpace;
                                 addElixir = (elixirSpace >= remainedElixir) ? remainedElixir : elixirSpace;
                                 addDark = (darkSpace >= remainedDatk) ? remainedDatk : darkSpace;
                                 break;
-                            case Data.BuildingID.goldstorage:
+                            case BuildingID.goldstorage:
                                 addGold = (goldSpace >= remainedGold) ? remainedGold : goldSpace;
                                 break;
-                            case Data.BuildingID.elixirstorage:
+                            case BuildingID.elixirstorage:
                                 addElixir = (elixirSpace >= remainedElixir) ? remainedElixir : elixirSpace;
                                 break;
-                            case Data.BuildingID.darkelixirstorage:
+                            case BuildingID.darkelixirstorage:
                                 addDark = (darkSpace >= remainedDatk) ? remainedDatk : darkSpace;
                                 break;
                         }
@@ -229,13 +253,76 @@ namespace Models {
             AddResources(connection, 10000, 10000, 0, 250);
 
             // builk mint the buildings
-            Console.WriteLine(JsonConvert.SerializeObject(BuildingIds));
             _ = HttpSender.PostJson("/mintBuildings", new Dictionary<string, string>(){
                 ["address"] = Address,
                 ["building_ids"] = JsonConvert.SerializeObject(BuildingIds),
             });
             connection.Close();
             return Id;
+        }
+    
+        public static Player Get(long id) {
+            string query = string.Format(@"
+                SELECT 
+                    accounts.id, 
+                    accounts.name, 
+                    gems, 
+                    trophies, 
+                    banned, 
+                    shield, 
+                    level, 
+                    xp, 
+                    clan_join_timer, 
+                    clan_id, 
+                    clan_rank, 
+                    war_id, 
+                    NOW() at time zone 'utc' AS now_time, 
+                    email, 
+                    map_layout, 
+                    shld_cldn_1, 
+                    shld_cldn_2, 
+                    shld_cldn_3,
+                    guild_id,
+                    guilds.logo as guild_logo,
+                    guilds.name as guild_name
+                FROM accounts 
+                left join guilds
+                on guilds.id = accounts.guild_id
+                WHERE accounts.id = {0};", id);
+                
+            Player data = new Player();
+            using NpgsqlConnection connection = Database.GetDbConnection();
+            using NpgsqlCommand command = new(query, connection);
+            using NpgsqlDataReader reader = command.ExecuteReader();
+            if (reader.HasRows)
+            {
+                while (reader.Read())
+                {
+                    data.id = id;
+                    data.name = reader["name"].ToString();
+                    data.email = reader["email"].ToString();
+                    _ = int.TryParse(reader["gems"].ToString(), out data.gems);
+                    _ = int.TryParse(reader["trophies"].ToString(), out data.trophies);
+                    _ = int.TryParse(reader["banned"].ToString(), out int ban);
+                    data.banned = ban > 0;
+                    _ = DateTime.TryParse(reader["now_time"].ToString(), out data.nowTime);
+                    _ = DateTime.TryParse(reader["shield"].ToString(), out data.shield);
+                    _ = DateTime.TryParse(reader["clan_join_timer"].ToString(), out data.clanTimer);
+                    _ = DateTime.TryParse(reader["shld_cldn_1"].ToString(), out data.shield1);
+                    _ = DateTime.TryParse(reader["shld_cldn_2"].ToString(), out data.shield2);
+                    _ = DateTime.TryParse(reader["shld_cldn_3"].ToString(), out data.shield3);
+                    _ = int.TryParse(reader["level"].ToString(), out data.level);
+                    _ = int.TryParse(reader["xp"].ToString(), out data.xp);
+                    _ = long.TryParse(reader["clan_id"].ToString(), out data.clanID);
+                    _ = int.TryParse(reader["clan_rank"].ToString(), out data.clanRank);
+                    _ = long.TryParse(reader["war_id"].ToString(), out data.warID);
+                    _ = int.TryParse(reader["map_layout"].ToString(), out data.layout);
+                    _ = long.TryParse(reader["guild_id"].ToString(), out data.guild_id);
+                    data.guild_logo = string.IsNullOrEmpty(reader["guild_logo"].ToString())? "" : (string) reader["guild_logo"];
+                    data.guild_name = string.IsNullOrEmpty(reader["guild_name"].ToString())? "" : (string) reader["guild_name"];
+                }
+            }
+            return data;
         }
     }
 }

@@ -2,9 +2,15 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Memewars.RealtimeNetworking.Server;
 
-namespace Memewars.RealtimeNetworking.Server
+namespace Models
 {
+    public enum BattleType
+    {
+        normal = 1, war = 2, quest = 3
+    }
+
     public class Battle
     {
 
@@ -51,7 +57,7 @@ namespace Memewars.RealtimeNetworking.Server
             {
                 switch (_buildings[i].building.id)
                 {
-                    case Data.BuildingID.townhall:
+                    case BuildingID.townhall:
                         totalGold += _buildings[i].lootGoldStorage;
                         lootedGold += _buildings[i].lootedGold;
                         totalElixir += _buildings[i].lootElixirStorage;
@@ -59,22 +65,22 @@ namespace Memewars.RealtimeNetworking.Server
                         totalDark += _buildings[i].lootDarkStorage;
                         lootedDark += _buildings[i].lootedDark;
                         break;
-                    case Data.BuildingID.goldmine:
-                    case Data.BuildingID.goldstorage:
+                    case BuildingID.goldmine:
+                    case BuildingID.goldstorage:
                         totalGold += _buildings[i].lootGoldStorage;
                         lootedGold += _buildings[i].lootedGold;
                         break;
-                    case Data.BuildingID.elixirmine:
-                    case Data.BuildingID.elixirstorage:
+                    case BuildingID.elixirmine:
+                    case BuildingID.elixirstorage:
                         totalElixir += _buildings[i].lootElixirStorage;
                         lootedElixir += _buildings[i].lootedElixir;
                         break;
-                    case Data.BuildingID.darkelixirmine:
-                    case Data.BuildingID.darkelixirstorage:
+                    case BuildingID.darkelixirmine:
+                    case BuildingID.darkelixirstorage:
                         totalDark += _buildings[i].lootDarkStorage;
                         lootedDark += _buildings[i].lootedDark;
                         break;
-                    case Data.BuildingID.clancastle:
+                    case BuildingID.clancastle:
 
                         break;
                 }
@@ -84,7 +90,7 @@ namespace Memewars.RealtimeNetworking.Server
 
         public int stars { get { int s = 0; if (townhallDestroyed) { s++; } if (fiftyPercentDestroyed) { s++; } if (completelyDestroyed) { s++; } return s; } }
 
-        public delegate void SpellSpawned(long databaseID, Data.SpellID id, BattleVector2 target, float radius);
+        public delegate void SpellSpawned(long databaseID, SpellID id, BattleVector2 target, float radius);
         public delegate void Spawned(long id);
         public delegate void AttackCallback(long index, long target);
         public delegate void IndexCallback(long index);
@@ -135,20 +141,20 @@ namespace Memewars.RealtimeNetworking.Server
 
         public class Tile
         {
-            public Tile(Data.BuildingID id, BattleVector2Int position, int index = -1)
+            public Tile(BuildingID id, BattleVector2Int position, int index = -1)
             {
                 this.id = id;
                 this.position = position;
                 this.index = index;
             }
-            public Data.BuildingID id;
+            public BuildingID id;
             public BattleVector2Int position;
             public int index = -1;
         }
 
         public class Spell
         {
-            public Data.Spell spell = null;
+            public Models.Spell spell = null;
             public IndexCallback pulseCallback = null;
             public IndexCallback doneCallback = null;
             public BattleVector2 position;
@@ -165,7 +171,7 @@ namespace Memewars.RealtimeNetworking.Server
 
         public class Unit
         {
-            public Data.Unit unit = null;
+            public Models.Unit unit = null;
             public float health = 0;
             public int target = -1;
             public int mainTarget = -1;
@@ -259,7 +265,7 @@ namespace Memewars.RealtimeNetworking.Server
 
         public class Building
         {
-            public Data.Building building = null;
+            public Models.Building building = null;
             public float health = 0;
             public int target = -1;
             public double attackTimer = 0;
@@ -318,7 +324,7 @@ namespace Memewars.RealtimeNetworking.Server
                     {
                         destroyCallback.Invoke(building.databaseID, this.percentage);
                     }
-                    if (building.id == Data.BuildingID.townhall && !hallStar)
+                    if (building.id == BuildingID.townhall && !hallStar)
                     {
                         hallStar = true;
                         if (starCallback != null)
@@ -411,7 +417,7 @@ namespace Memewars.RealtimeNetworking.Server
                 int startY = _buildings[i].building.y;
                 int endY = _buildings[i].building.y + _buildings[i].building.rows;
 
-                if (_buildings[i].building.id != Data.BuildingID.wall && _buildings[i].building.columns > 1 && _buildings[i].building.rows > 1)
+                if (_buildings[i].building.id != BuildingID.wall && _buildings[i].building.columns > 1 && _buildings[i].building.rows > 1)
                 {
                     startX++;
                     startY++;
@@ -496,7 +502,7 @@ namespace Memewars.RealtimeNetworking.Server
             return true;
         }
 
-        public void AddUnit(Data.Unit unit, int x, int y, Spawned callback = null, AttackCallback attackCallback = null, IndexCallback dieCallback = null, FloatCallback damageCallback = null, FloatCallback healCallback = null, IndexCallback targetCallback = null)
+        public void AddUnit(Models.Unit unit, int x, int y, Spawned callback = null, AttackCallback attackCallback = null, IndexCallback dieCallback = null, FloatCallback damageCallback = null, FloatCallback healCallback = null, IndexCallback targetCallback = null)
         {
             if (end)
             {
@@ -521,7 +527,7 @@ namespace Memewars.RealtimeNetworking.Server
             _unitsToAdd.Add(unitToAdd);
         }
 
-        public void AddSpell(Data.Spell spell, int x, int y, SpellSpawned callback = null, IndexCallback pulseCallback = null, IndexCallback doneCallback = null)
+        public void AddSpell(Models.Spell spell, int x, int y, SpellSpawned callback = null, IndexCallback pulseCallback = null, IndexCallback doneCallback = null)
         {
             if (end)
             {
@@ -581,7 +587,7 @@ namespace Memewars.RealtimeNetworking.Server
 
             for (int i = 0; i < _buildings.Count; i++)
             {
-                if (_buildings[i].building.targetType != Data.BuildingTargetType.none && _buildings[i].health > 0)
+                if (_buildings[i].building.targetType != BuildingTargetType.none && _buildings[i].health > 0)
                 {
                     HandleBuilding(i, Data.battleFrameRate);
                 }
@@ -617,7 +623,7 @@ namespace Memewars.RealtimeNetworking.Server
                                 _units[projectiles[i].target].Heal(projectiles[i].damage);
                                 for (int j = 0; j < _units.Count; j++)
                                 {
-                                    if (_units[j].health <= 0 || j == projectiles[i].target || _units[j].unit.movement == Data.UnitMoveType.fly)
+                                    if (_units[j].health <= 0 || j == projectiles[i].target || _units[j].unit.movement == UnitMoveType.fly)
                                     {
                                         continue;
                                     }
@@ -663,7 +669,7 @@ namespace Memewars.RealtimeNetworking.Server
         {
             if (_buildings[index].target >= 0)
             {
-                if (_units[_buildings[index].target].health <= 0 || !IsUnitInRange(_buildings[index].target, index) || (_units[_buildings[index].target].unit.movement == Data.UnitMoveType.underground && _units[_buildings[index].target].path != null))
+                if (_units[_buildings[index].target].health <= 0 || !IsUnitInRange(_buildings[index].target, index) || (_units[_buildings[index].target].unit.movement == UnitMoveType.underground && _units[_buildings[index].target].path != null))
                 {
                     // If the building's target is dead or not in range then remove it as target
                     _buildings[index].target = -1;
@@ -675,7 +681,7 @@ namespace Memewars.RealtimeNetworking.Server
                     for (int i = 0; i < _spells.Count; i++)
                     {
                         if (_spells[i].done) { continue; }
-                        if (_spells[i].spell.id == Data.SpellID.freeze)
+                        if (_spells[i].spell.id == Models.SpellID.freeze)
                         {
                             double p = GetBuildingInSpellRangePercentage(i, index);
                             if (p > 0)
@@ -761,17 +767,17 @@ namespace Memewars.RealtimeNetworking.Server
         {
             for (int i = 0; i < _units.Count; i++)
             {
-                if (_units[i].health <= 0 || _units[i].unit.movement == Data.UnitMoveType.underground && _units[i].path != null)
+                if (_units[i].health <= 0 || _units[i].unit.movement == UnitMoveType.underground && _units[i].path != null)
                 {
                     continue;
                 }
 
-                if (_buildings[index].building.targetType == Data.BuildingTargetType.ground && _units[i].unit.movement == Data.UnitMoveType.fly)
+                if (_buildings[index].building.targetType == BuildingTargetType.ground && _units[i].unit.movement == UnitMoveType.fly)
                 {
                     continue;
                 }
 
-                if (_buildings[index].building.targetType == Data.BuildingTargetType.air && _units[i].unit.movement != Data.UnitMoveType.fly)
+                if (_buildings[index].building.targetType == BuildingTargetType.air && _units[i].unit.movement != UnitMoveType.fly)
                 {
                     continue;
                 }
@@ -805,7 +811,7 @@ namespace Memewars.RealtimeNetworking.Server
             for (int i = 0; i < _spells.Count; i++)
             {
                 if (_spells[i].done) { continue; }
-                if (_spells[i].spell.id == Data.SpellID.invisibility)
+                if (_spells[i].spell.id == SpellID.invisibility)
                 {
                     float distance = BattleVector2.Distance(_units[unitIndex].position, _spells[i].position);
                     if (distance <= (_spells[i].spell.server.radius * Data.gridCellSize))
@@ -819,7 +825,7 @@ namespace Memewars.RealtimeNetworking.Server
 
         private void HandleUnit(int index, double deltaTime)
         {
-            if (_units[index].unit.id == Data.UnitID.healer)
+            if (_units[index].unit.id == UnitID.healer)
             {
                 if (_units[index].target >= 0 && (_units[_units[index].target].health <= 0 || _units[_units[index].target].health >= _units[_units[index].target].unit.health))
                 {
@@ -907,13 +913,13 @@ namespace Memewars.RealtimeNetworking.Server
                     {
                         _units[index].moving = true;
                         /*
-                        if(_units[index].unit.movement == Data.UnitMoveType.ground)
+                        if(_units[index].unit.movement == UnitMoveType.ground)
                         {
                             bool inJumpRange = false;
                             for (int i = 0; i < _spells.Count; i++)
                             {
                                 if (_spells[i].done) { continue; }
-                                if (_spells[i].spell.id == Data.SpellID.jump)
+                                if (_spells[i].spell.id == SpellID.jump)
                                 {
                                     float distance = BattleVector2.Distance(_units[index].position, _spells[i].position);
                                     if (distance <= (_spells[i].spell.server.radius * Data.gridCellSize))
@@ -983,7 +989,7 @@ namespace Memewars.RealtimeNetworking.Server
                 {
                     if (_buildings[_units[index].target].health > 0)
                     {
-                        if (_buildings[_units[index].target].building.id == Data.BuildingID.wall && _units[index].mainTarget >= 0 && _buildings[_units[index].mainTarget].health <= 0)
+                        if (_buildings[_units[index].target].building.id == BuildingID.wall && _units[index].mainTarget >= 0 && _buildings[_units[index].mainTarget].health <= 0)
                         {
                             _units[index].moving = false;
                             _units[index].target = -1;
@@ -998,38 +1004,38 @@ namespace Memewars.RealtimeNetworking.Server
                                 if (_units[index].attackTimer >= _units[index].unit.attackSpeed)
                                 {
                                     float multiplier = 1;
-                                    if (_units[index].unit.priority != Data.TargetPriority.all || _units[index].unit.priority != Data.TargetPriority.none)
+                                    if (_units[index].unit.priority != TargetPriority.all || _units[index].unit.priority != TargetPriority.none)
                                     {
                                         switch (_buildings[_units[index].target].building.id)
                                         {
-                                            case Data.BuildingID.townhall:
-                                            case Data.BuildingID.goldmine:
-                                            case Data.BuildingID.goldstorage:
-                                            case Data.BuildingID.elixirmine:
-                                            case Data.BuildingID.elixirstorage:
-                                            case Data.BuildingID.darkelixirmine:
-                                            case Data.BuildingID.darkelixirstorage:
-                                                if (_units[index].unit.priority == Data.TargetPriority.resources)
+                                            case BuildingID.townhall:
+                                            case BuildingID.goldmine:
+                                            case BuildingID.goldstorage:
+                                            case BuildingID.elixirmine:
+                                            case BuildingID.elixirstorage:
+                                            case BuildingID.darkelixirmine:
+                                            case BuildingID.darkelixirstorage:
+                                                if (_units[index].unit.priority == TargetPriority.resources)
                                                 {
                                                     multiplier = _units[index].unit.priorityMultiplier;
                                                 }
                                                 break;
-                                            case Data.BuildingID.wall:
-                                                if (_units[index].unit.priority == Data.TargetPriority.walls)
+                                            case BuildingID.wall:
+                                                if (_units[index].unit.priority == TargetPriority.walls)
                                                 {
                                                     multiplier = _units[index].unit.priorityMultiplier;
                                                 }
                                                 break;
-                                            case Data.BuildingID.cannon:
-                                            case Data.BuildingID.archertower:
-                                            case Data.BuildingID.mortor:
-                                            case Data.BuildingID.airdefense:
-                                            case Data.BuildingID.wizardtower:
-                                            case Data.BuildingID.hiddentesla:
-                                            case Data.BuildingID.bombtower:
-                                            case Data.BuildingID.xbow:
-                                            case Data.BuildingID.infernotower:
-                                                if (_units[index].unit.priority == Data.TargetPriority.defenses)
+                                            case BuildingID.cannon:
+                                            case BuildingID.archertower:
+                                            case BuildingID.mortor:
+                                            case BuildingID.airdefense:
+                                            case BuildingID.wizardtower:
+                                            case BuildingID.hiddentesla:
+                                            case BuildingID.bombtower:
+                                            case BuildingID.xbow:
+                                            case BuildingID.infernotower:
+                                                if (_units[index].unit.priority == TargetPriority.defenses)
                                                 {
                                                     multiplier = _units[index].unit.priorityMultiplier;
                                                 }
@@ -1064,7 +1070,7 @@ namespace Memewars.RealtimeNetworking.Server
                                     {
                                         _units[index].attackCallback.Invoke(_units[index].unit.databaseID, _buildings[_units[index].target].building.databaseID);
                                     }
-                                    if (_units[index].unit.id == Data.UnitID.wallbreaker)
+                                    if (_units[index].unit.id == UnitID.wallbreaker)
                                     {
                                         _units[index].TakeDamage(_units[index].health);
                                     }
@@ -1099,7 +1105,7 @@ namespace Memewars.RealtimeNetworking.Server
             // TODO: Larger mass of units is priority
             for (int i = 0; i < _units.Count; i++)
             {
-                if (_units[i].health <= 0 || i == index || _units[i].health >= _units[i].unit.health || _units[i].unit.movement == Data.UnitMoveType.fly)
+                if (_units[i].health <= 0 || i == index || _units[i].health >= _units[i].unit.health || _units[i].unit.movement == UnitMoveType.fly)
                 {
                     continue;
                 }
@@ -1116,45 +1122,45 @@ namespace Memewars.RealtimeNetworking.Server
             }
         }
 
-        private void ListUnitTargets(int index, Data.TargetPriority priority)
+        private void ListUnitTargets(int index, TargetPriority priority)
         {
             _units[index].resourceTargets.Clear();
             _units[index].defenceTargets.Clear();
             _units[index].otherTargets.Clear();
-            if (priority == Data.TargetPriority.walls)
+            if (priority == TargetPriority.walls)
             {
-                priority = Data.TargetPriority.all;
+                priority = TargetPriority.all;
             }
             for (int i = 0; i < _buildings.Count; i++)
             {
-                if (_buildings[i].health <= 0 || _buildings[i].building.id == Data.BuildingID.wall || !IsBuildingCanBeAttacked(_buildings[i].building.id))
+                if (_buildings[i].health <= 0 || _buildings[i].building.id == BuildingID.wall || !IsBuildingCanBeAttacked(_buildings[i].building.id))
                 {
                     continue;
                 }
                 float distance = BattleVector2.Distance(_buildings[i].worldCenterPosition, _units[index].position);
                 switch (_buildings[i].building.id)
                 {
-                    case Data.BuildingID.townhall:
-                    case Data.BuildingID.elixirmine:
-                    case Data.BuildingID.elixirstorage:
-                    case Data.BuildingID.darkelixirmine:
-                    case Data.BuildingID.darkelixirstorage:
-                    case Data.BuildingID.goldmine:
-                    case Data.BuildingID.goldstorage:
+                    case BuildingID.townhall:
+                    case BuildingID.elixirmine:
+                    case BuildingID.elixirstorage:
+                    case BuildingID.darkelixirmine:
+                    case BuildingID.darkelixirstorage:
+                    case BuildingID.goldmine:
+                    case BuildingID.goldstorage:
                         _units[index].resourceTargets.Add(i, distance);
                         break;
-                    case Data.BuildingID.cannon:
-                    case Data.BuildingID.archertower:
-                    case Data.BuildingID.mortor:
-                    case Data.BuildingID.airdefense:
-                    case Data.BuildingID.wizardtower:
-                    case Data.BuildingID.hiddentesla:
-                    case Data.BuildingID.bombtower:
-                    case Data.BuildingID.xbow:
-                    case Data.BuildingID.infernotower:
+                    case BuildingID.cannon:
+                    case BuildingID.archertower:
+                    case BuildingID.mortor:
+                    case BuildingID.airdefense:
+                    case BuildingID.wizardtower:
+                    case BuildingID.hiddentesla:
+                    case BuildingID.bombtower:
+                    case BuildingID.xbow:
+                    case BuildingID.infernotower:
                         _units[index].defenceTargets.Add(i, distance);
                         break;
-                    case Data.BuildingID.wall:
+                    case BuildingID.wall:
                         // Don't include
                         break;
                     default:
@@ -1164,10 +1170,10 @@ namespace Memewars.RealtimeNetworking.Server
             }
         }
 
-        private void FindTargets(int index, Data.TargetPriority priority)
+        private void FindTargets(int index, TargetPriority priority)
         {
             ListUnitTargets(index, priority);
-            if (priority == Data.TargetPriority.defenses)
+            if (priority == TargetPriority.defenses)
             {
                 if (_units[index].defenceTargets.Count > 0)
                 {
@@ -1175,11 +1181,11 @@ namespace Memewars.RealtimeNetworking.Server
                 }
                 else
                 {
-                    FindTargets(index, Data.TargetPriority.all);
+                    FindTargets(index, TargetPriority.all);
                     return;
                 }
             }
-            else if (priority == Data.TargetPriority.resources)
+            else if (priority == TargetPriority.resources)
             {
                 if (_units[index].resourceTargets.Count > 0)
                 {
@@ -1187,16 +1193,16 @@ namespace Memewars.RealtimeNetworking.Server
                 }
                 else
                 {
-                    FindTargets(index, Data.TargetPriority.all);
+                    FindTargets(index, TargetPriority.all);
                     return;
                 }
             }
-            else if (priority == Data.TargetPriority.all || priority == Data.TargetPriority.walls)
+            else if (priority == TargetPriority.all || priority == TargetPriority.walls)
             {
                 Dictionary<int, float> temp = _units[index].GetAllTargets();
                 if (temp.Count > 0)
                 {
-                    AssignTarget(index, ref temp, priority == Data.TargetPriority.walls);
+                    AssignTarget(index, ref temp, priority == TargetPriority.walls);
                 }
             }
         }
@@ -1236,7 +1242,7 @@ namespace Memewars.RealtimeNetworking.Server
                 {
                     for (int i = 0; i < _units.Count; i++)
                     {
-                        if (_units[i].health <= 0 || _units[i].unit.movement != Data.UnitMoveType.ground || i != unitIndex || _units[i].target < 0 || _units[i].mainTarget != target.Key || _units[i].mainTarget < 0 || _buildings[_units[i].mainTarget].building.id != Data.BuildingID.wall || _buildings[_units[i].mainTarget].health <= 0)
+                        if (_units[i].health <= 0 || _units[i].unit.movement != UnitMoveType.ground || i != unitIndex || _units[i].target < 0 || _units[i].mainTarget != target.Key || _units[i].mainTarget < 0 || _buildings[_units[i].mainTarget].building.id != BuildingID.wall || _buildings[_units[i].mainTarget].health <= 0)
                         {
                             continue;
                         }
@@ -1269,7 +1275,7 @@ namespace Memewars.RealtimeNetworking.Server
                             {
                                 if (blockedTiles[j].position.x == path.points[i].Location.X && blockedTiles[j].position.y == path.points[i].Location.Y)
                                 {
-                                    if (blockedTiles[j].id == Data.BuildingID.wall && _buildings[blockedTiles[j].index].health > 0)
+                                    if (blockedTiles[j].id == BuildingID.wall && _buildings[blockedTiles[j].index].health > 0)
                                     {
                                         int t = blockedTiles[j].index;
                                         for (int k = path.points.Count - 1; k >= j; k--)
@@ -1292,7 +1298,7 @@ namespace Memewars.RealtimeNetworking.Server
 
         private (int, Path) GetPathToBuilding(int buildingIndex, int unitIndex)
         {
-            if (_buildings[buildingIndex].building.id == Data.BuildingID.wall || _buildings[buildingIndex].building.id == Data.BuildingID.decoration || _buildings[buildingIndex].building.id == Data.BuildingID.obstacle)
+            if (_buildings[buildingIndex].building.id == BuildingID.wall || _buildings[buildingIndex].building.id == BuildingID.decoration || _buildings[buildingIndex].building.id == BuildingID.obstacle)
             {
                 return (-1, null);
             }
@@ -1306,7 +1312,7 @@ namespace Memewars.RealtimeNetworking.Server
             int endX = _buildings[buildingIndex].building.x + _buildings[buildingIndex].building.columns - 1;
             int startY = _buildings[buildingIndex].building.y;
             int endY = _buildings[buildingIndex].building.y + _buildings[buildingIndex].building.rows - 1;
-            if (_units[unitIndex].unit.movement == Data.UnitMoveType.ground && _buildings[buildingIndex].building.id == Data.BuildingID.wall)
+            if (_units[unitIndex].unit.movement == UnitMoveType.ground && _buildings[buildingIndex].building.id == BuildingID.wall)
             {
                 startX--;
                 startY--;
@@ -1320,7 +1326,7 @@ namespace Memewars.RealtimeNetworking.Server
 
             // Get the list of building's available surrounding tiles
             List<Path> tiles = new List<Path>();
-            if (_units[unitIndex].unit.movement == Data.UnitMoveType.ground)
+            if (_units[unitIndex].unit.movement == UnitMoveType.ground)
             {
                 #region With Walls Effect
                 int closest = -1;
@@ -1357,7 +1363,7 @@ namespace Memewars.RealtimeNetworking.Server
                                     {
                                         if (blockedTiles[j].position.x == path2.points[i].Location.X && blockedTiles[j].position.y == path2.points[i].Location.Y)
                                         {
-                                            if (blockedTiles[j].id == Data.BuildingID.wall && _buildings[blockedTiles[j].index].health > 0)
+                                            if (blockedTiles[j].id == BuildingID.wall && _buildings[blockedTiles[j].index].health > 0)
                                             {
                                                 path2.blocks.Add(blockedTiles[j]);
                                                 // path2.blocksHealth += _buildings[blockedTiles[j].index].health;
@@ -1382,7 +1388,7 @@ namespace Memewars.RealtimeNetworking.Server
                 {
                     for (int i = 0; i < _units.Count; i++)
                     {
-                        if (_units[i].health <= 0 || _units[i].unit.movement != Data.UnitMoveType.ground || i != unitIndex || _units[i].target < 0 || _units[i].mainTarget != buildingIndex || _units[i].mainTarget < 0 || _buildings[_units[i].mainTarget].building.id != Data.BuildingID.wall || _buildings[_units[i].mainTarget].health <= 0)
+                        if (_units[i].health <= 0 || _units[i].unit.movement != UnitMoveType.ground || i != unitIndex || _units[i].target < 0 || _units[i].mainTarget != buildingIndex || _units[i].mainTarget < 0 || _buildings[_units[i].mainTarget].building.id != BuildingID.wall || _buildings[_units[i].mainTarget].health <= 0)
                         {
                             continue;
                         }
@@ -1505,7 +1511,7 @@ namespace Memewars.RealtimeNetworking.Server
                 _spells[index].palsesDone += 1;
                 switch (_spells[index].spell.id)
                 {
-                    case Data.SpellID.lightning:
+                    case SpellID.lightning:
                         for (int i = 0; i < _buildings.Count; i++)
                         {
                             if (_buildings[i].health <= 0 || !IsBuildingCanBeAttacked(_buildings[i].building.id)) { continue; }
@@ -1514,7 +1520,7 @@ namespace Memewars.RealtimeNetworking.Server
                             _buildings[i].TakeDamage(damage, ref grid, ref blockedTiles, ref percentage, ref fiftyPercentDestroyed, ref townhallDestroyed, ref completelyDestroyed);
                         }
                         break;
-                    case Data.SpellID.healing:
+                    case SpellID.healing:
                         for (int i = 0; i < _units.Count; i++)
                         {
                             if (_units[i].health <= 0) { continue; }
@@ -1523,28 +1529,28 @@ namespace Memewars.RealtimeNetworking.Server
                             _units[i].Heal(_spells[index].spell.server.pulsesValue);
                         }
                         break;
-                    case Data.SpellID.rage:
+                    case SpellID.rage:
 
                         break;
-                    case Data.SpellID.jump:
+                    case SpellID.jump:
 
                         break;
-                    case Data.SpellID.freeze:
+                    case SpellID.freeze:
 
                         break;
-                    case Data.SpellID.invisibility:
+                    case SpellID.invisibility:
 
                         break;
-                    case Data.SpellID.earthquake:
+                    case SpellID.earthquake:
 
                         break;
-                    case Data.SpellID.haste:
+                    case SpellID.haste:
 
                         break;
-                    case Data.SpellID.skeleton:
+                    case SpellID.skeleton:
 
                         break;
-                    case Data.SpellID.bat:
+                    case SpellID.bat:
 
                         break;
                 }
@@ -1592,7 +1598,7 @@ namespace Memewars.RealtimeNetworking.Server
             for (int i = 0; i < _spells.Count; i++)
             {
                 if (_spells[i].done) { continue; }
-                if (_spells[i].spell.id == Data.SpellID.rage)
+                if (_spells[i].spell.id == SpellID.rage)
                 {
                     damage += (_units[index].unit.damage * _spells[i].spell.server.pulsesValue);
                 }
@@ -1606,11 +1612,11 @@ namespace Memewars.RealtimeNetworking.Server
             for (int i = 0; i < _spells.Count; i++)
             {
                 if (_spells[i].done) { continue; }
-                if (_spells[i].spell.id == Data.SpellID.rage)
+                if (_spells[i].spell.id == SpellID.rage)
                 {
                     speed += _spells[i].spell.server.pulsesValue2;
                 }
-                else if (_spells[i].spell.id == Data.SpellID.haste)
+                else if (_spells[i].spell.id == SpellID.haste)
                 {
                     speed += _spells[i].spell.server.pulsesValue;
                 }
@@ -1742,18 +1748,18 @@ namespace Memewars.RealtimeNetworking.Server
             public BattleVector2Int(int x, int y) { this.x = x; this.y = y; }
         }
 
-        public static bool IsBuildingCanBeAttacked(Data.BuildingID id)
+        public static bool IsBuildingCanBeAttacked(BuildingID id)
         {
             switch (id)
             {
-                case Data.BuildingID.obstacle:
-                case Data.BuildingID.decoration:
-                case Data.BuildingID.boomb:
-                case Data.BuildingID.springtrap:
-                case Data.BuildingID.airbomb:
-                case Data.BuildingID.giantbomb:
-                case Data.BuildingID.seekingairmine:
-                case Data.BuildingID.skeletontrap:
+                case BuildingID.obstacle:
+                case BuildingID.decoration:
+                case BuildingID.boomb:
+                case BuildingID.springtrap:
+                case BuildingID.airbomb:
+                case BuildingID.giantbomb:
+                case BuildingID.seekingairmine:
+                case BuildingID.skeletontrap:
                     return false;
             }
             return true;

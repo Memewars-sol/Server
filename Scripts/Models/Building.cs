@@ -13,9 +13,44 @@ using WebUtils;
 
 namespace Models {
 
+    public class BuildingAvailability
+    {
+        public int level = 1;
+        public BuildingCount[] buildings = null;
+    }
+
+    public class BuildingCount
+    {
+        public string id = "global_id";
+        public int count = 0;
+        public int maxLevel = 1;
+        public int have = 0;
+    }
+
     public enum BuildingID
     {
         townhall = 0, goldmine = 1, goldstorage = 2, elixirmine = 3, elixirstorage = 4, darkelixirmine = 5, darkelixirstorage = 6, buildershut = 7, armycamp = 8, barracks = 9, darkbarracks = 10, wall = 11, cannon = 12, archertower = 13, mortor = 14, airdefense = 15, wizardtower = 16, hiddentesla = 19, bombtower = 20, xbow = 21, infernotower = 22, decoration = 23, obstacle = 24, boomb = 25, springtrap = 26, airbomb = 27, giantbomb = 28, seekingairmine = 29, skeletontrap = 30, clancastle = 31, spellfactory = 32, darkspellfactory = 33, laboratory = 34, airsweeper = 35, kingaltar = 36, qeenaltar = 37
+    }
+
+    public enum BuildingTargetType
+    {
+        none = 0, ground = 1, air = 2, all = 3
+    }
+
+    public class ServerBuilding
+    {
+        public string id = "";
+        public int level = 0;
+        public int type = 0;
+        public long databaseID = 0;
+        public int requiredGold = 0;
+        public int requiredElixir = 0;
+        public int requiredGems = 0;
+        public int requiredDarkElixir = 0;
+        public int columns = 0;
+        public int rows = 0;
+        public int buildTime = 0;
+        public int gainedXp = 0;
     }
 
     public class Building {
@@ -25,11 +60,6 @@ namespace Models {
         private static List<BuildingID> NonCNFTBuildings = new List<BuildingID>() {
             BuildingID.obstacle
         };
-
-        public enum BuildingTargetType
-        {
-            none = 0, ground = 1, air = 2, all = 3
-        }
 
         // This building's params
         public BuildingID id = BuildingID.townhall;
@@ -67,18 +97,18 @@ namespace Models {
         public bool is_cnft = true;
         // end this building's params
 
-        public async static Task<Data.ServerBuilding> GetServerBuildingAsync(string id, int level)
+        public async static Task<ServerBuilding> GetServerBuildingAsync(string id, int level)
         {
-            Task<Data.ServerBuilding> task = Task.Run(() =>
+            Task<ServerBuilding> task = Task.Run(() =>
             {
                 return Retry.Do(() => _GetServerBuildingAsync(id, level), TimeSpan.FromSeconds(0.1), 1, false);
             });
             return await task;
         }
 
-        private static Data.ServerBuilding _GetServerBuildingAsync(string id, int level)
+        private static ServerBuilding _GetServerBuildingAsync(string id, int level)
         {
-            Data.ServerBuilding data = null;
+            ServerBuilding data = null;
             using (NpgsqlConnection connection = Database.GetDbConnection())
             {
                 string query = String.Format("SELECT * FROM server_buildings WHERE global_id = '{0}' AND level = {1};", id, level);
@@ -90,7 +120,7 @@ namespace Models {
                         {
                             while (reader.Read())
                             {
-                                data = new Data.ServerBuilding();
+                                data = new ServerBuilding();
                                 data.id = id;
                                 long.TryParse(reader["id"].ToString(), out data.databaseID);
                                 int.TryParse(reader["req_gold"].ToString(), out data.requiredGold);
@@ -111,9 +141,9 @@ namespace Models {
             return data;
         }
 
-        private static List<Data.ServerBuilding> GetServerBuildings(NpgsqlConnection connection)
+        private static List<ServerBuilding> GetServerBuildings(NpgsqlConnection connection)
         {
-            List<Data.ServerBuilding> buildings = new List<Data.ServerBuilding>();
+            List<ServerBuilding> buildings = new List<ServerBuilding>();
             string query = String.Format("SELECT id, global_id, level, req_gold, req_elixir, req_gems, req_dark_elixir, columns_count, rows_count, build_time, gained_xp FROM server_buildings;");
             using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
             {
@@ -123,9 +153,9 @@ namespace Models {
                     {
                         while (reader.Read())
                         {
-                            Data.ServerBuilding building = new Data.ServerBuilding();
+                            ServerBuilding building = new ServerBuilding();
                             long.TryParse(reader["id"].ToString(), out building.databaseID);
-                            // building.id = (Data.BuildingID)Enum.Parse(typeof(Data.BuildingID), reader["global_id"].ToString());
+                            // building.id = (BuildingID)Enum.Parse(typeof(BuildingID), reader["global_id"].ToString());
                             building.id = reader["global_id"].ToString();
                             int.TryParse(reader["level"].ToString(), out building.level);
                             int.TryParse(reader["req_gold"].ToString(), out building.requiredGold);
@@ -143,9 +173,9 @@ namespace Models {
             }
             return buildings;
         }
-        private static List<Data.Building> GetBuildings(long account)
+        private static List<Building> GetBuildings(long account)
         {
-            List<Data.Building> data = new List<Data.Building>();
+            List<Building> data = new List<Building>();
             string query = String.Format("SELECT buildings.id, buildings.global_id, buildings.level, buildings.x_position, buildings.x_war, buildings.y_war, buildings.boost, buildings.gold_storage, buildings.elixir_storage, buildings.dark_elixir_storage, buildings.y_position, buildings.construction_time, buildings.is_constructing, buildings.construction_build_time, server_buildings.columns_count, server_buildings.rows_count, server_buildings.health, server_buildings.speed, server_buildings.radius, server_buildings.capacity, server_buildings.gold_capacity, server_buildings.elixir_capacity, server_buildings.dark_elixir_capacity, server_buildings.damage, server_buildings.target_type, server_buildings.blind_radius, server_buildings.splash_radius, server_buildings.projectile_speed FROM buildings LEFT JOIN server_buildings ON buildings.global_id = server_buildings.global_id AND buildings.level = server_buildings.level WHERE buildings.account_id = {0};", account);
             using (NpgsqlCommand command = new NpgsqlCommand(query, Database.GetDbConnection()))
             {
@@ -155,8 +185,8 @@ namespace Models {
                     {
                         while (reader.Read())
                         {
-                            Data.Building building = new Data.Building();
-                            building.id = (Data.BuildingID)Enum.Parse(typeof(Data.BuildingID), reader["global_id"].ToString());
+                            Building building = new Building();
+                            building.id = (BuildingID)Enum.Parse(typeof(BuildingID), reader["global_id"].ToString());
                             long.TryParse(reader["id"].ToString(), out building.databaseID);
                             int.TryParse(reader["level"].ToString(), out building.level);
                             int.TryParse(reader["x_position"].ToString(), out building.x);
@@ -194,7 +224,7 @@ namespace Models {
                             string tt = reader["target_type"].ToString();
                             if (!string.IsNullOrEmpty(tt))
                             {
-                                building.targetType = (Data.BuildingTargetType)Enum.Parse(typeof(Data.BuildingTargetType), tt);
+                                building.targetType = (BuildingTargetType)Enum.Parse(typeof(BuildingTargetType), tt);
                             }
                             int isConstructing = 0;
                             int.TryParse(reader["is_constructing"].ToString(), out isConstructing);
@@ -212,14 +242,14 @@ namespace Models {
 
         public async Task<long> Create() {
             is_cnft = !NonCNFTBuildings.Contains(id);
-            Data.ServerBuilding building = await GetServerBuildingAsync(id.ToString(), level);
+            ServerBuilding building = await GetServerBuildingAsync(id.ToString(), level);
 
             if (building == null || x < 0 || y < 0 || x + building.columns > Data.gridSize /* x position more than max size */ || y + building.rows > Data.gridSize  /* y position more than max size */)
             {
                 return -1;
             }
 
-            List<Data.Building> buildings = GetBuildings(account_id);
+            List<Building> buildings = GetBuildings(account_id);
             for (int i = 0; i < buildings.Count; i++)
             {
                 int bX = buildings[i].x;
@@ -268,5 +298,93 @@ namespace Models {
             
             return -1;
         }
+
+        public static List<Battle.Building> ConvertToBattleBuildings(List<Building> buildings, BattleType type)
+        {
+            List<Battle.Building> battleBuildings = new List<Battle.Building>();
+            int townhallLevel = 1;
+            for (int i = 0; i < buildings.Count; i++)
+            {
+                if (buildings[i].id == BuildingID.townhall)
+                {
+                    townhallLevel = buildings[i].level;
+                    break;
+                }
+            }
+
+            for (int i = 0; i < buildings.Count; i++)
+            {
+                if (buildings[i].databaseID != buildings[i].databaseID || buildings[i].id != buildings[i].id || buildings[i].health != buildings[i].health || buildings[i].damage != buildings[i].damage || buildings[i].percentage != buildings[i].percentage)
+                {
+                    return null;
+                }
+
+                Battle.Building building = new Battle.Building();
+                building.building = buildings[i];
+                if (type == BattleType.war)
+                {
+                    building.building.x = building.building.warX;
+                    building.building.y = building.building.warY;
+                }
+
+                if (building.building.x < 0 || building.building.y < 0)
+                {
+                    continue;
+                }
+
+                building.building.x += Data.battleGridOffset;
+                building.building.y += Data.battleGridOffset;
+
+                // bool storage = false;
+                switch (building.building.id)
+                {
+                    case BuildingID.townhall:
+                        building.lootGoldStorage = Data.GetStorageGoldAndElixirLoot(townhallLevel, building.building.goldStorage);
+                        building.lootElixirStorage = Data.GetStorageGoldAndElixirLoot(townhallLevel, building.building.elixirStorage);
+                        building.lootDarkStorage = Data.GetStorageDarkElixirLoot(townhallLevel, building.building.darkStorage);
+                        // storage = true;
+                        break;
+                    case BuildingID.goldmine:
+                        building.lootGoldStorage = Data.GetMinesGoldAndElixirLoot(townhallLevel, building.building.goldStorage);
+                        // storage = true;
+                        break;
+                    case BuildingID.goldstorage:
+                        building.lootGoldStorage = Data.GetStorageGoldAndElixirLoot(townhallLevel, building.building.goldStorage);
+                        // storage = true;
+                        break;
+                    case BuildingID.elixirmine:
+                        building.lootElixirStorage = Data.GetMinesGoldAndElixirLoot(townhallLevel, building.building.elixirStorage);
+                        // storage = true;
+                        break;
+                    case BuildingID.elixirstorage:
+                        building.lootElixirStorage = Data.GetStorageGoldAndElixirLoot(townhallLevel, building.building.elixirStorage);
+                        // storage = true;
+                        break;
+                    case BuildingID.darkelixirmine:
+                        building.lootDarkStorage = Data.GetMinesDarkElixirLoot(townhallLevel, building.building.darkStorage);
+                        // storage = true;
+                        break;
+                    case BuildingID.darkelixirstorage:
+                        building.lootDarkStorage = Data.GetStorageDarkElixirLoot(townhallLevel, building.building.darkStorage);
+                        // storage = true;
+                        break;
+                }
+                /*
+                if (storage)
+                {
+                    Data.BattleStartBuildingData st = new Data.BattleStartBuildingData();
+                    st.id = building.building.id;
+                    st.databaseID = building.building.databaseID;
+                    st.lootGoldStorage = building.building.goldStorage;
+                    st.lootElixirStorage = building.building.elixirStorage;
+                    st.lootDarkStorage = building.building.darkStorage;
+                    startData.Add(st);
+                }
+                */
+                battleBuildings.Add(building);
+            }
+            return battleBuildings;
+        }
+
     }
 }

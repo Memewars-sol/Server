@@ -7,6 +7,7 @@ using System.Xml.Serialization;
 using System.IO;
 using System.Security.Cryptography;
 using System.IO.Compression;
+using Models;
 
 namespace Memewars.RealtimeNetworking.Server
 {
@@ -169,7 +170,7 @@ namespace Memewars.RealtimeNetworking.Server
             return true;
         }
 
-        public static int GetBoostResourcesCost(Data.BuildingID id, int level)
+        public static int GetBoostResourcesCost(BuildingID id, int level)
         {
             return 20;
         }
@@ -195,80 +196,6 @@ namespace Memewars.RealtimeNetworking.Server
             public int level = 1;
             public int trophies = 0;
             public DateTime time;
-        }
-
-        public class Player
-        {
-            public long id = 0;
-            public string name = "Player";
-            public int gems = 0;
-            public int trophies = 0;
-            public bool banned = false;
-            public DateTime nowTime;
-            public DateTime shield;
-            public int xp = 0;
-            public int level = 1;
-            public DateTime clanTimer;
-            public long clanID = 0;
-            public int clanRank = 0;
-            public long warID = 0;
-            public string email = "";
-            public int layout = 0;
-            public DateTime shield1;
-            public DateTime shield2;
-            public DateTime shield3;
-            public List<Building> buildings = new List<Building>();
-            public List<Unit> units = new List<Unit>();
-            public List<Spell> spells = new List<Spell>();
-        }
-
-        public enum UnitID
-        {
-            barbarian = 0, archer = 1, goblin = 2, healer = 3, wallbreaker = 4, giant = 5, miner = 6, balloon = 7, wizard = 8, dragon = 9, pekka = 10, babydragon = 11, electrodragon = 12, yeti = 13, dragonrider = 14, electrotitan = 15, minion = 16, hogrider = 17, valkyrie = 18, golem = 19, witch = 20, lavahound = 21, bowler = 22, icegolem = 23, headhunter = 24, skeleton = 25, bat = 26
-        }
-
-        // Spells that their effects have been applied to the project: lightning, healing, rage, freeze, invisibility, haste
-        public enum SpellID
-        {
-            lightning = 0, healing = 1, rage = 2, jump = 3, freeze = 4, invisibility = 5, recall = 6, earthquake = 7, haste = 8, skeleton = 9, bat = 10
-        }
-
-        public class ServerSpell
-        {
-            public long databaseID = 0;
-            public SpellID id = SpellID.lightning;
-            public int level = 0;
-            public int requiredGold = 0;
-            public int requiredElixir = 0;
-            public int requiredGems = 0;
-            public int requiredDarkElixir = 0;
-            public int brewTime = 0;
-            public int housing = 1;
-            public float radius = 0;
-            public int pulsesCount = 0;
-            public float pulsesDuration = 0;
-            public float pulsesValue = 0;
-            public float pulsesValue2 = 0;
-            public int researchTime = 0;
-            public int researchGold = 0;
-            public int researchElixir = 0;
-            public int researchDarkElixir = 0;
-            public int researchGems = 0;
-            public int researchXp = 0;
-        }
-
-        public class Spell
-        {
-            public long databaseID = 0;
-            public SpellID id = SpellID.lightning;
-            public int level = 0;
-            public int hosing = 1;
-            public bool brewed = false;
-            public bool ready = false;
-            public int brewTime = 0;
-            public float brewedTime = 0;
-            public int housing = 1;
-            public ServerSpell server = null;
         }
         public static bool IsUnitUnlocked(UnitID id, int barracksLevel, int darkBarracksLevel)
         {
@@ -361,26 +288,6 @@ namespace Memewars.RealtimeNetworking.Server
             else if (currentLevel <= 201) { return ((currentLevel - 1) * (currentLevel - 2) * 25) + 30; }
             else if (currentLevel <= 299) { return ((currentLevel - 200) * (currentLevel - 200) * 250) + (9250 * (currentLevel - 200)) + 985530; }
             else { return ((currentLevel - 300) * (currentLevel - 300) * 500) + (59500 * (currentLevel - 300)) + 4410530; }
-        }
-
-        public enum TargetPriority
-        {
-            none = 0, all = 1, defenses = 2, resources = 3, walls = 4
-        }
-
-        public enum BuildingTargetType
-        {
-            none = 0, ground = 1, air = 2, all = 3
-        }
-
-        public enum UnitMoveType
-        {
-            ground = 0, jump = 1, fly = 2, underground = 3
-        }
-
-        public enum BuildingID
-        {
-            townhall = 0, goldmine = 1, goldstorage = 2, elixirmine = 3, elixirstorage = 4, darkelixirmine = 5, darkelixirstorage = 6, buildershut = 7, armycamp = 8, barracks = 9, darkbarracks = 10, wall = 11, cannon = 12, archertower = 13, mortor = 14, airdefense = 15, wizardtower = 16, hiddentesla = 19, bombtower = 20, xbow = 21, infernotower = 22, decoration = 23, obstacle = 24, boomb = 25, springtrap = 26, airbomb = 27, giantbomb = 28, seekingairmine = 29, skeletontrap = 30, clancastle = 31, spellfactory = 32, darkspellfactory = 33, laboratory = 34, airsweeper = 35, kingaltar = 36, qeenaltar = 37
         }
 
         public static int GetStorageGoldAndElixirLoot(int townhallLevel, float storage)
@@ -505,16 +412,11 @@ namespace Memewars.RealtimeNetworking.Server
             public Spell spell = null;
         }
 
-        public enum BattleType
-        {
-            normal = 1, war = 2, quest = 3
-        }
-
         public class BattleData
         {
             public Battle battle = null;
             public BattleType type = BattleType.normal;
-            public List<Data.Building> buildings = new List<Data.Building>();
+            public List<Building> buildings = new List<Building>();
             public List<BattleFrame> savedFrames = new List<BattleFrame>();
             public List<BattleFrame> frames = new List<BattleFrame>();
         }
@@ -522,7 +424,7 @@ namespace Memewars.RealtimeNetworking.Server
         public class OpponentData
         {
             public long id = 0;
-            public Data.Player data = null;
+            public Player data = null;
             public List<Building> buildings = null;
         }
 
@@ -564,165 +466,6 @@ namespace Memewars.RealtimeNetworking.Server
             public int researchGems = 0;
             public int researchXp = 0;
         }
-
-        public class Unit
-        {
-            public UnitID id = UnitID.barbarian;
-            public int level = 0;
-            public long databaseID = 0;
-            public int hosing = 1;
-            public bool trained = false;
-            public bool ready = false;
-            public int health = 0;
-            public int trainTime = 0;
-            public float trainedTime = 0;
-            public float moveSpeed = 1;
-            public float attackSpeed = 1;
-            public float attackRange = 1;
-            public float damage = 1;
-            public float splashRange = 0;
-            public float rangedSpeed = 5;
-            public TargetPriority priority = TargetPriority.none;
-            public UnitMoveType movement = UnitMoveType.ground;
-            public float priorityMultiplier = 1;
-        }
-
-        public class Building
-        {
-            public BuildingID id = BuildingID.townhall;
-            public int level = 0;
-            public long databaseID = 0;
-            public int x = 0;
-            public int y = 0;
-            public int warX = -1;
-            public int warY = -1;
-            public int columns = 0;
-            public int rows = 0;
-            public int goldStorage = 0;
-            public int elixirStorage = 0;
-            public int darkStorage = 0;
-            public DateTime boost;
-            public int health = 100;
-            public float damage = 0;
-            public int capacity = 0;
-            public int goldCapacity = 0;
-            public int elixirCapacity = 0;
-            public int darkCapacity = 0;
-            public float speed = 0;
-            public float radius = 0;
-            public DateTime constructionTime;
-            public bool isConstructing = false;
-            public int buildTime = 0;
-            public BuildingTargetType targetType = BuildingTargetType.none;
-            public float blindRange = 0;
-            public float splashRange = 0;
-            public float rangedSpeed = 5;
-            public double percentage = 0;
-        }
-
-        public class ServerBuilding
-        {
-            public string id = "";
-            public int level = 0;
-            public int type = 0;
-            public long databaseID = 0;
-            public int requiredGold = 0;
-            public int requiredElixir = 0;
-            public int requiredGems = 0;
-            public int requiredDarkElixir = 0;
-            public int columns = 0;
-            public int rows = 0;
-            public int buildTime = 0;
-            public int gainedXp = 0;
-        }
-
-        public static List<Battle.Building> BuildingsToBattleBuildings(List<Building> buildings, BattleType type)
-        {
-            List<Battle.Building> battleBuildings = new List<Battle.Building>();
-            int townhallLevel = 1;
-            for (int i = 0; i < buildings.Count; i++)
-            {
-                if (buildings[i].id == Data.BuildingID.townhall)
-                {
-                    townhallLevel = buildings[i].level;
-                    break;
-                }
-            }
-
-            for (int i = 0; i < buildings.Count; i++)
-            {
-                if (buildings[i].databaseID != buildings[i].databaseID || buildings[i].id != buildings[i].id || buildings[i].health != buildings[i].health || buildings[i].damage != buildings[i].damage || buildings[i].percentage != buildings[i].percentage)
-                {
-                    return null;
-                }
-
-                Battle.Building building = new Battle.Building();
-                building.building = buildings[i];
-                if (type == Data.BattleType.war)
-                {
-                    building.building.x = building.building.warX;
-                    building.building.y = building.building.warY;
-                }
-
-                if (building.building.x < 0 || building.building.y < 0)
-                {
-                    continue;
-                }
-
-                building.building.x += Data.battleGridOffset;
-                building.building.y += Data.battleGridOffset;
-
-                // bool storage = false;
-                switch (building.building.id)
-                {
-                    case Data.BuildingID.townhall:
-                        building.lootGoldStorage = Data.GetStorageGoldAndElixirLoot(townhallLevel, building.building.goldStorage);
-                        building.lootElixirStorage = Data.GetStorageGoldAndElixirLoot(townhallLevel, building.building.elixirStorage);
-                        building.lootDarkStorage = Data.GetStorageDarkElixirLoot(townhallLevel, building.building.darkStorage);
-                        // storage = true;
-                        break;
-                    case Data.BuildingID.goldmine:
-                        building.lootGoldStorage = Data.GetMinesGoldAndElixirLoot(townhallLevel, building.building.goldStorage);
-                        // storage = true;
-                        break;
-                    case Data.BuildingID.goldstorage:
-                        building.lootGoldStorage = Data.GetStorageGoldAndElixirLoot(townhallLevel, building.building.goldStorage);
-                        // storage = true;
-                        break;
-                    case Data.BuildingID.elixirmine:
-                        building.lootElixirStorage = Data.GetMinesGoldAndElixirLoot(townhallLevel, building.building.elixirStorage);
-                        // storage = true;
-                        break;
-                    case Data.BuildingID.elixirstorage:
-                        building.lootElixirStorage = Data.GetStorageGoldAndElixirLoot(townhallLevel, building.building.elixirStorage);
-                        // storage = true;
-                        break;
-                    case Data.BuildingID.darkelixirmine:
-                        building.lootDarkStorage = Data.GetMinesDarkElixirLoot(townhallLevel, building.building.darkStorage);
-                        // storage = true;
-                        break;
-                    case Data.BuildingID.darkelixirstorage:
-                        building.lootDarkStorage = Data.GetStorageDarkElixirLoot(townhallLevel, building.building.darkStorage);
-                        // storage = true;
-                        break;
-                }
-                /*
-                if (storage)
-                {
-                    Data.BattleStartBuildingData st = new Data.BattleStartBuildingData();
-                    st.id = building.building.id;
-                    st.databaseID = building.building.databaseID;
-                    st.lootGoldStorage = building.building.goldStorage;
-                    st.lootElixirStorage = building.building.elixirStorage;
-                    st.lootDarkStorage = building.building.darkStorage;
-                    startData.Add(st);
-                }
-                */
-                battleBuildings.Add(building);
-            }
-            return battleBuildings;
-        }
-
         public static T CloneClass<T>(this T target)
         {
             return Desrialize<T>(Serialize<T>(target));
@@ -874,20 +617,6 @@ namespace Memewars.RealtimeNetworking.Server
                 }
             }
             return gems;
-        }
-
-        public class BuildingAvailability
-        {
-            public int level = 1;
-            public BuildingCount[] buildings = null;
-        }
-
-        public class BuildingCount
-        {
-            public string id = "global_id";
-            public int count = 0;
-            public int maxLevel = 1;
-            public int have = 0;
         }
 
         public static int GetResourceGemCost(int gold, int elixir, int dark)
