@@ -754,6 +754,15 @@ namespace Models {
             connection.Close();
         }
 
+        public static bool RemoveShield(long account_id)
+        {
+            string query = string.Format("UPDATE accounts SET shield = NOW() at time zone 'utc' - INTERVAL '1 SECOND' WHERE id = {0};", account_id);
+            using NpgsqlConnection connection = Database.GetDbConnection();
+            using NpgsqlCommand command = new(query, connection);
+            command.ExecuteNonQuery();
+            return true;
+        }
+
         public static int GetRank(long account_id)
         {
             using NpgsqlConnection connection = Database.GetDbConnection();

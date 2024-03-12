@@ -195,81 +195,6 @@ namespace Memewars.RealtimeNetworking.Server
 
         #region Resource Manager
 
-
-        private async static Task<bool> AddShieldAsync(long account_id, int seconds)
-        {
-            Task<bool> task = Task.Run(() =>
-            {
-                return Retry.Do(() => _AddShieldAsync(account_id, seconds), TimeSpan.FromSeconds(0.1), 1, false);
-            });
-            return await task;
-        }
-
-        private static bool AddShield(NpgsqlConnection connection, long account_id, int seconds)
-        {
-            if (seconds <= 0) { return false; }
-            bool haveShield = false;
-            string query = String.Format("SELECT shield FROM accounts WHERE id = {0} AND shield > NOW() at time zone 'utc'", account_id);
-            using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-            {
-                using (NpgsqlDataReader reader = command.ExecuteReader())
-                {
-                    if (reader.HasRows)
-                    {
-                        haveShield = true;
-                    }
-                }
-            }
-            if (haveShield)
-            {
-                query = String.Format("UPDATE accounts SET shield = shield + INTERVAL '{0} SECOND' WHERE id = {1};", seconds, account_id);
-            }
-            else
-            {
-                query = String.Format("UPDATE accounts SET shield = NOW() at time zone 'utc' + INTERVAL '{0} SECOND' WHERE id = {1};", seconds, account_id);
-            }
-            using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-            {
-                command.ExecuteNonQuery();
-            }
-            return true;
-        }
-
-        private static bool _AddShieldAsync(long account_id, int seconds)
-        {
-            using (NpgsqlConnection connection = GetDbConnection())
-            {
-                return AddShield(connection, account_id, seconds);
-            }
-        }
-
-        private async static Task<bool> RemoveShieldAsync(long account_id)
-        {
-            Task<bool> task = Task.Run(() =>
-            {
-                return Retry.Do(() => _RemoveShieldAsync(account_id), TimeSpan.FromSeconds(0.1), 1, false);
-            });
-            return await task;
-        }
-
-        private static bool RemoveShield(NpgsqlConnection connection, long account_id)
-        {
-            string query = String.Format("UPDATE accounts SET shield = NOW() at time zone 'utc' - INTERVAL '1 SECOND' WHERE id = {0};", account_id);
-            using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-            {
-                command.ExecuteNonQuery();
-            }
-            return true;
-        }
-
-        private static bool _RemoveShieldAsync(long account_id)
-        {
-            using (NpgsqlConnection connection = GetDbConnection())
-            {
-                return RemoveShield(connection, account_id);
-            }
-        }
-
         public async static void BoostResource(int id, long building_id)
         {
             long account_id = Server.clients[id].account;
@@ -2522,7 +2447,7 @@ namespace Memewars.RealtimeNetworking.Server
             {
                 if (type == BattleType.normal)
                 {
-                    await RemoveShieldAsync(account_id);
+                    Account.RemoveShield(account_id);
                 }
                 Player attackerData = await GetPlayerDataAsync(account_id);
                 Player defenderData = await GetPlayerDataAsync(defender);
