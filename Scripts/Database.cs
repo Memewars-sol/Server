@@ -195,106 +195,6 @@ namespace Memewars.RealtimeNetworking.Server
 
         #region Resource Manager
 
-        private static (int, int, int, int) AddResources(NpgsqlConnection connection, long account_id, int gold, int elixir, int darkElixir, int gems)
-        {
-            int addedGold = 0;
-            int addedElixir = 0;
-            int addedDark = 0;
-
-            if (gold > 0 || elixir > 0 || darkElixir > 0)
-            {
-                List<Building> storages = new List<Building>();
-                string query = String.Format("SELECT buildings.id, buildings.global_id, buildings.gold_storage, buildings.elixir_storage, buildings.dark_elixir_storage, server_buildings.gold_capacity, server_buildings.elixir_capacity, server_buildings.dark_elixir_capacity FROM buildings LEFT JOIN server_buildings ON buildings.global_id = server_buildings.global_id AND buildings.level = server_buildings.level WHERE buildings.account_id = {0} AND buildings.global_id IN('{1}', '{2}', '{3}', '{4}') AND buildings.level > 0;", account_id, BuildingID.townhall.ToString(), BuildingID.goldstorage.ToString(), BuildingID.elixirstorage.ToString(), BuildingID.darkelixirstorage.ToString());
-                using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                {
-                    using (NpgsqlDataReader reader = command.ExecuteReader())
-                    {
-                        if (reader.HasRows)
-                        {
-                            while (reader.Read())
-                            {
-                                Building building = new Building();
-                                building.databaseID = long.Parse(reader["id"].ToString());
-                                building.id = (BuildingID)Enum.Parse(typeof(BuildingID), reader["global_id"].ToString());
-                                building.goldStorage = (int)Math.Floor(float.Parse(reader["gold_storage"].ToString()));
-                                building.elixirStorage = (int)Math.Floor(float.Parse(reader["elixir_storage"].ToString()));
-                                building.darkStorage = (int)Math.Floor(float.Parse(reader["dark_elixir_storage"].ToString()));
-                                building.goldCapacity = int.Parse(reader["gold_capacity"].ToString());
-                                building.elixirCapacity = int.Parse(reader["elixir_capacity"].ToString());
-                                building.darkCapacity = int.Parse(reader["dark_elixir_capacity"].ToString());
-                                storages.Add(building);
-                            }
-                        }
-                    }
-                }
-
-                if (storages.Count > 0)
-                {
-                    int remainedGold = gold;
-                    int remainedElixir = elixir;
-                    int remainedDatk = darkElixir;
-                    for (int i = 0; i < storages.Count; i++)
-                    {
-                        if (remainedGold <= 0 && remainedElixir <= 0 && remainedDatk <= 0)
-                        {
-                            break;
-                        }
-
-                        int goldSpace = storages[i].goldCapacity - storages[i].goldStorage;
-                        int elixirSpace = storages[i].elixirCapacity - storages[i].elixirStorage;
-                        int darkSpace = storages[i].darkCapacity - storages[i].darkStorage;
-
-                        int addGold = 0;
-                        int addElixir = 0;
-                        int addDark = 0;
-
-                        switch (storages[i].id)
-                        {
-                            case BuildingID.townhall:
-                                addGold = (goldSpace >= remainedGold) ? remainedGold : goldSpace;
-                                addElixir = (elixirSpace >= remainedElixir) ? remainedElixir : elixirSpace;
-                                addDark = (darkSpace >= remainedDatk) ? remainedDatk : darkSpace;
-                                break;
-                            case BuildingID.goldstorage:
-                                addGold = (goldSpace >= remainedGold) ? remainedGold : goldSpace;
-                                break;
-                            case BuildingID.elixirstorage:
-                                addElixir = (elixirSpace >= remainedElixir) ? remainedElixir : elixirSpace;
-                                break;
-                            case BuildingID.darkelixirstorage:
-                                addDark = (darkSpace >= remainedDatk) ? remainedDatk : darkSpace;
-                                break;
-                        }
-
-                        query = String.Format("UPDATE buildings SET gold_storage = gold_storage + {0}, elixir_storage = elixir_storage + {1}, dark_elixir_storage = dark_elixir_storage + {2} WHERE id = {3};", addGold, addElixir, addDark, storages[i].databaseID);
-                        using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                        {
-                            command.ExecuteNonQuery();
-                        }
-
-                        remainedGold -= addGold;
-                        remainedElixir -= addElixir;
-                        remainedDatk -= addDark;
-
-                        addedGold += addGold;
-                        addedElixir += addElixir;
-                        addedDark += addDark;
-                    }
-                }
-            }
-
-            if (gems > 0)
-            {
-                string query = String.Format("UPDATE accounts SET gems = gems + {0} WHERE id = {1};", gems, account_id);
-                using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                {
-                    command.ExecuteNonQuery();
-                }
-            }
-
-            return (addedGold, addedElixir, addedDark, gems);
-        }
-
         private static void AddXP(NpgsqlConnection connection, long account_id, int xp)
         {
             int haveXp = 0;
@@ -592,64 +492,64 @@ namespace Memewars.RealtimeNetworking.Server
                     }
                 }
 
-                int tatgetGold = goldCapacity - gold;
-                int tatgetElixir = elixirCapacity - elixir;
-                int tatgetDark = darkCapacity - dark;
+                int targetGold = goldCapacity - gold;
+                int targetElixir = elixirCapacity - elixir;
+                int targetDarkElixir = darkCapacity - dark;
 
                 switch ((Data.BuyResourcePack)pack)
                 {
                     case Data.BuyResourcePack.gold_10:
-                        tatgetGold = (int)Math.Floor(tatgetGold * 0.1d);
-                        tatgetElixir = 0;
-                        tatgetDark = 0;
+                        targetGold = (int)Math.Floor(targetGold * 0.1d);
+                        targetElixir = 0;
+                        targetDarkElixir = 0;
                         break;
                     case Data.BuyResourcePack.gold_50:
-                        tatgetGold = (int)Math.Floor(tatgetGold * 0.5d);
-                        tatgetElixir = 0;
-                        tatgetDark = 0;
+                        targetGold = (int)Math.Floor(targetGold * 0.5d);
+                        targetElixir = 0;
+                        targetDarkElixir = 0;
                         break;
                     case Data.BuyResourcePack.gold_100:
-                        tatgetElixir = 0;
-                        tatgetDark = 0;
+                        targetElixir = 0;
+                        targetDarkElixir = 0;
                         break;
                     case Data.BuyResourcePack.elixir_10:
-                        tatgetElixir = (int)Math.Floor(tatgetElixir * 0.1d);
-                        tatgetGold = 0;
-                        tatgetDark = 0;
+                        targetElixir = (int)Math.Floor(targetElixir * 0.1d);
+                        targetGold = 0;
+                        targetDarkElixir = 0;
                         break;
                     case Data.BuyResourcePack.elixir_50:
-                        tatgetElixir = (int)Math.Floor(tatgetElixir * 0.5d);
-                        tatgetGold = 0;
-                        tatgetDark = 0;
+                        targetElixir = (int)Math.Floor(targetElixir * 0.5d);
+                        targetGold = 0;
+                        targetDarkElixir = 0;
                         break;
                     case Data.BuyResourcePack.elixir_100:
-                        tatgetGold = 0;
-                        tatgetDark = 0;
+                        targetGold = 0;
+                        targetDarkElixir = 0;
                         break;
                     case Data.BuyResourcePack.dark_10:
-                        tatgetDark = (int)Math.Floor(tatgetDark * 0.1d);
-                        tatgetGold = 0;
-                        tatgetElixir = 0;
+                        targetDarkElixir = (int)Math.Floor(targetDarkElixir * 0.1d);
+                        targetGold = 0;
+                        targetElixir = 0;
                         break;
                     case Data.BuyResourcePack.dark_50:
-                        tatgetDark = (int)Math.Floor(tatgetDark * 0.5d);
-                        tatgetGold = 0;
-                        tatgetElixir = 0;
+                        targetDarkElixir = (int)Math.Floor(targetDarkElixir * 0.5d);
+                        targetGold = 0;
+                        targetElixir = 0;
                         break;
                     case Data.BuyResourcePack.dark_100:
-                        tatgetGold = 0;
-                        tatgetElixir = 0;
+                        targetGold = 0;
+                        targetElixir = 0;
                         break;
                 }
 
-                if (tatgetGold < 0) { tatgetGold = 0; }
-                if (tatgetElixir < 0) { tatgetElixir = 0; }
-                if (tatgetDark < 0) { tatgetDark = 0; }
+                if (targetGold < 0) { targetGold = 0; }
+                if (targetElixir < 0) { targetElixir = 0; }
+                if (targetDarkElixir < 0) { targetDarkElixir = 0; }
 
-                int cost = Data.GetResourceGemCost(tatgetGold, tatgetElixir, tatgetDark);
+                int cost = Data.GetResourceGemCost(targetGold, targetElixir, targetDarkElixir);
                 if(Account.SpendResources(account_id, 0, 0, cost, 0))
                 {
-                    var add = AddResources(connection, account_id, tatgetGold, tatgetElixir, tatgetDark, 0);
+                    Account.AddResources(account_id, targetGold, targetElixir, targetDarkElixir, 0);
                     response = 1;
                 }
                 connection.Close();
@@ -806,20 +706,20 @@ namespace Memewars.RealtimeNetworking.Server
                 }
                 if (amountGold > 0)
                 {
-                    amount = AddResources(connection, account_id, amountGold, 0, 0, 0).Item1;
-                    query = String.Format("UPDATE buildings SET gold_storage = gold_storage - {0} WHERE id = {1};", amount, database_id);
+                    Account.AddResources(account_id, amountGold, 0, 0, 0);
+                    query = String.Format("UPDATE buildings SET gold_storage = gold_storage - {0} WHERE id = {1};", amountGold, database_id);
                     using (NpgsqlCommand command = new NpgsqlCommand(query, connection)) { command.ExecuteNonQuery(); }
                 }
                 else if (amountElixir > 0)
                 {
-                    amount = AddResources(connection, account_id, 0, amountElixir, 0, 0).Item2;
-                    query = String.Format("UPDATE buildings SET elixir_storage = elixir_storage - {0} WHERE id = {1};", amount, database_id);
+                    Account.AddResources(account_id, 0, amountElixir, 0, 0);
+                    query = String.Format("UPDATE buildings SET elixir_storage = elixir_storage - {0} WHERE id = {1};", amountElixir, database_id);
                     using (NpgsqlCommand command = new NpgsqlCommand(query, connection)) { command.ExecuteNonQuery(); }
                 }
                 else if (amountDark > 0)
                 {
-                    amount = AddResources(connection, account_id, 0, 0, amountDark, 0).Item3;
-                    query = String.Format("UPDATE buildings SET dark_elixir_storage = dark_elixir_storage - {0} WHERE id = {1};", amount, database_id);
+                    Account.AddResources(account_id, 0, 0, amountDark, 0);
+                    query = String.Format("UPDATE buildings SET dark_elixir_storage = dark_elixir_storage - {0} WHERE id = {1};", amountDark, database_id);
                     using (NpgsqlCommand command = new NpgsqlCommand(query, connection)) { command.ExecuteNonQuery(); }
                 }
                 connection.Close();
@@ -1313,7 +1213,7 @@ namespace Memewars.RealtimeNetworking.Server
                     if (trophies > 0)
                     {
                         Account.SpendResources(defender_id, lootedGold, lootedElixir, 0, lootedDark);
-                        AddResources(connection, attacker_id, lootedGold, lootedElixir, lootedDark, 0);
+                        Account.AddResources(attacker_id, lootedGold, lootedElixir, lootedDark, 0);
                     }
 
                     if (battleType == BattleType.normal)

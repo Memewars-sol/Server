@@ -526,8 +526,8 @@ namespace Models {
                 }
 
                 int buildingGoldSpent = building.goldStorage >= gold? gold : building.goldStorage;
-                int buildingElixirSpent = building.elixirStorage >= gold? gold : building.goldStorage;
-                int buildingDarkElixirSpent = building.darkStorage >= gold? gold : building.goldStorage;
+                int buildingElixirSpent = building.elixirStorage >= elixir? elixir : building.elixirStorage;
+                int buildingDarkElixirSpent = building.darkStorage >= darkElixir? darkElixir : building.darkStorage;
                 
                 gold -= buildingGoldSpent;
                 elixir -= buildingElixirSpent;
@@ -547,19 +547,104 @@ namespace Models {
                 return false;
             }
 
-            using NpgsqlCommand updateBuildingCommand = new(query, connection);
+            using NpgsqlCommand updateBuildingCommand = new(spendQuery, connection);
             updateBuildingCommand.ExecuteNonQuery();
 
             // update gems
             if (gems > 0)
             {
                 string updateGemQuery = String.Format("UPDATE accounts SET gems = gems - {0} WHERE id = {1};", gems, account_id);
-                using NpgsqlCommand updateGemCommand = new(query, connection);
+                using NpgsqlCommand updateGemCommand = new(updateGemQuery, connection);
                 updateGemCommand.ExecuteNonQuery();
             }
 
             connection.Close();
             return true;
+        }
+
+        public static void AddResources(long account_id, int gold, int elixir, int darkElixir, int gems)
+        {
+            if(gold == 0 && elixir == 0 && darkElixir == 0 && gems == 0) {
+                return;
+            }
+
+            using NpgsqlConnection connection = Database.GetDbConnection();
+            if (gold > 0 || elixir > 0 || darkElixir > 0)
+            {
+                // update storage
+                List<Building> storages = new List<Building>();
+                string query = String.Format(@"
+                    SELECT 
+                        buildings.id, 
+                        buildings.global_id, 
+                        buildings.gold_storage, 
+                        buildings.elixir_storage, 
+                        buildings.dark_elixir_storage, 
+                        server_buildings.gold_capacity, 
+                        server_buildings.elixir_capacity, 
+                        server_buildings.dark_elixir_capacity 
+                    FROM buildings 
+                    LEFT JOIN server_buildings 
+                    ON buildings.global_id = server_buildings.global_id 
+                    AND buildings.level = server_buildings.level 
+                    WHERE buildings.account_id = {0} 
+                    AND (gold_capacity > 0 OR elixir_capacity > 0 OR dark_elixir_capacity > 0)
+                    AND buildings.level > 0;", account_id);
+                using NpgsqlCommand command = new(query, connection);
+                using NpgsqlDataReader reader = command.ExecuteReader();
+                if (reader.HasRows)
+                {
+                    while (reader.Read())
+                    {
+                        Building building = new()
+                        {
+                            databaseID = long.Parse(reader["id"].ToString()),
+                            id = (BuildingID)Enum.Parse(typeof(BuildingID), reader["global_id"].ToString()),
+                            goldStorage = (int)Math.Floor(float.Parse(reader["gold_storage"].ToString())),
+                            elixirStorage = (int)Math.Floor(float.Parse(reader["elixir_storage"].ToString())),
+                            darkStorage = (int)Math.Floor(float.Parse(reader["dark_elixir_storage"].ToString())),
+                            goldCapacity = int.Parse(reader["gold_capacity"].ToString()),
+                            elixirCapacity = int.Parse(reader["elixir_capacity"].ToString()),
+                            darkCapacity = int.Parse(reader["dark_elixir_capacity"].ToString())
+                        };
+                        storages.Add(building);
+                    }
+                }
+
+                string updateQuery = "";
+                foreach(var storage in storages) {
+                    if (gold <= 0 && elixir <= 0 && darkElixir <= 0)
+                    {
+                        break;
+                    }
+
+                    int goldStored = storage.goldCapacity >= gold? gold : storage.goldCapacity;
+                    int elixirStored = storage.elixirCapacity >= elixir? elixir : storage.elixirCapacity;
+                    int darkElixirStored = storage.darkCapacity >= darkElixir? darkElixir : storage.darkCapacity;
+
+                    updateQuery += string.Format(@"
+                        UPDATE buildings 
+                        SET gold_storage = gold_storage + {0}, 
+                        elixir_storage = elixir_storage + {1}, 
+                        dark_elixir_storage = dark_elixir_storage + {2} 
+                        WHERE id = {3};", goldStored, elixirStored, darkElixirStored, storage.databaseID);
+                }
+
+                if(!string.IsNullOrEmpty(updateQuery)) {
+                    using NpgsqlCommand updateCommand = new(updateQuery, connection);
+                    command.ExecuteNonQuery();
+                }
+
+            }
+
+            if (gems > 0)
+            {
+                string query = string.Format("UPDATE accounts SET gems = gems + {0} WHERE id = {1};", gems, account_id);
+                using NpgsqlCommand command = new(query, connection);
+                command.ExecuteNonQuery();
+            }
+
+            return;
         }
 
         public static void LogIn(long id, long account_id) {
