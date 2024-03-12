@@ -644,6 +644,7 @@ namespace Models {
                 command.ExecuteNonQuery();
             }
 
+            connection.Close();
             return;
         }
 
@@ -678,6 +679,7 @@ namespace Models {
             string updateQuery = string.Format("UPDATE accounts SET level = {0}, xp = {1} WHERE id = {2} AND level = {3} AND xp = {4}", reachedLevel, remainedXp, account_id, level, haveXp);
             using NpgsqlCommand updateCommand = new(updateQuery, connection);
             updateCommand.ExecuteNonQuery();
+            connection.Close();
         }
 
         public static void LogIn(long id, long account_id) {
@@ -723,6 +725,35 @@ namespace Models {
             return response;
         }
     
+
+        public static void UpdateTrophies(long account_id, int amount)
+        {
+            if (amount == 0) { return; }
+            using NpgsqlConnection connection = Database.GetDbConnection();
+            if (amount > 0)
+            {
+                string addQuery = string.Format("UPDATE accounts SET trophies = trophies + {0} WHERE id = {1}", amount, account_id);
+                using NpgsqlCommand command = new(addQuery, connection);
+                command.ExecuteNonQuery();
+                connection.Close();
+                return;
+            }
+
+            string removeQuery = string.Format("UPDATE accounts SET trophies = trophies - {0} WHERE id = {1}", -amount, account_id);
+            using (NpgsqlCommand command = new(removeQuery, connection))
+            {
+                command.ExecuteNonQuery();
+            }
+
+            // if trophy is negative set it to 0
+            removeQuery = string.Format("UPDATE accounts SET trophies = 0 WHERE id = {0} AND trophies < 0", account_id);
+            using (NpgsqlCommand command = new(removeQuery, connection))
+            {
+                command.ExecuteNonQuery();
+            }
+            connection.Close();
+        }
+
         public static int GetRank(long account_id)
         {
             using NpgsqlConnection connection = Database.GetDbConnection();

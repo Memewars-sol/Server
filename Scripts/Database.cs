@@ -195,31 +195,6 @@ namespace Memewars.RealtimeNetworking.Server
 
         #region Resource Manager
 
-        private static void ChangeTrophies(NpgsqlConnection connection, long account_id, int amount)
-        {
-            if (amount == 0) { return; }
-            if (amount > 0)
-            {
-                string query = String.Format("UPDATE accounts SET trophies = trophies + {0} WHERE id = {1}", amount, account_id);
-                using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                {
-                    command.ExecuteNonQuery();
-                }
-            }
-            else
-            {
-                string query = String.Format("UPDATE accounts SET trophies = trophies - {0} WHERE id = {1}", -amount, account_id);
-                using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                {
-                    command.ExecuteNonQuery();
-                }
-                query = String.Format("UPDATE accounts SET trophies = 0 WHERE id = {0} AND trophies < 0", account_id);
-                using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                {
-                    command.ExecuteNonQuery();
-                }
-            }
-        }
 
         private async static Task<bool> AddShieldAsync(long account_id, int seconds)
         {
@@ -1153,8 +1128,8 @@ namespace Memewars.RealtimeNetworking.Server
 
                     if (battleType == BattleType.normal)
                     {
-                        ChangeTrophies(connection, attacker_id, trophies);
-                        ChangeTrophies(connection, defender_id, -trophies);
+                        Account.UpdateTrophies(attacker_id, trophies);
+                        Account.UpdateTrophies(defender_id, -trophies);
                     }
 
                     if (client_id > 0 && Server.clients[client_id].account == attacker_id)
