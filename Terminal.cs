@@ -251,7 +251,7 @@ namespace Memewars.RealtimeNetworking.Server
                     // end email logins
                     
                     case RequestsID.LOGOUT:
-                        Database.LogOut(clientID, address);
+                        Account.LogOut(address);
                         break;
                     case RequestsID.BREW:
                         string spellID = packet.ReadString();
@@ -264,29 +264,19 @@ namespace Memewars.RealtimeNetworking.Server
                     case RequestsID.RESEARCH:
                         int type = packet.ReadInt();
                         string global_id = packet.ReadString();
-                        Database.DoResearch(clientID, (Data.ResearchType)type, global_id);
+                        Database.DoResearch(clientID, (ResearchType)type, global_id);
                         break;
                     case RequestsID.SCOUT:
                         databaseID = packet.ReadLong();
                         int scoutType = packet.ReadInt();
                         Database.Scout(clientID, databaseID, scoutType);
                         break;
+                    // todo
                     case RequestsID.BUYGEM:
-                        int gemPack = packet.ReadInt();
-                        string ps = packet.ReadString();
-                        string pr = packet.ReadString();
-                        string or = packet.ReadString();
-                        string pk = packet.ReadString();
-                        string mk = packet.ReadString();
-                        Database.BuyGem(clientID, gemPack, or, pr, ps, pk, mk);
                         break;
                     case RequestsID.BUYSHIELD:
-                        int shieldPack = packet.ReadInt();
-                        Database.BuyShield(clientID, shieldPack);
                         break;
                     case RequestsID.BUYGOLD:
-                        int goldPack = packet.ReadInt();
-                        Database.BuyGold(clientID, goldPack);
                         break;
                     case RequestsID.PLAYERSRANK:
                         int p = packet.ReadInt();

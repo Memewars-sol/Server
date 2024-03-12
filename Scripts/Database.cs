@@ -55,7 +55,7 @@ namespace Memewars.RealtimeNetworking.Server
 
         public static NpgsqlConnection GetDbConnection()
         {
-            var cs = String.Format("Host={0};Port={1};User ID={2};Password={3};Database={4};", dbIP, dbPort, dbUsername, dbPassword, dbName);
+            var cs = string.Format("Host={0};Port={1};User ID={2};Password={3};Database={4};", dbIP, dbPort, dbUsername, dbPassword, dbName);
             var con = new NpgsqlConnection(cs);
             con.Open();
             return con;
@@ -69,17 +69,11 @@ namespace Memewars.RealtimeNetworking.Server
         private static bool updating = false;
         private static double updatePeriod = 0.1d;
 
-        private static DateTime warUpdateTime = DateTime.Now;
-        private static bool warUpdating = false;
-        private static double warUpdatePeriod = 0.1d;
-
-        private static DateTime warCheckTime = DateTime.Now;
-        private static bool warCheckUpdating = false;
-        private static double warCheckPeriod = 0.1d;
-
         private static DateTime obstaclesTime = DateTime.Now;
         private static bool obstaclesUpdating = false;
         private static double obstaclesPeriod = 86400d;
+
+        private static int players_ranking_per_page = 30;
 
         public static void Update()
         {
@@ -166,7 +160,7 @@ namespace Memewars.RealtimeNetworking.Server
 
         public async static void AuthenticatePlayer(int id, string address)
         {
-            Data.InitializationData auth = await AuthenticatePlayerAsync(id, address);
+            InitializationData auth = await Account.GetInitializationData(id, address);
             Packet packet = new Packet();
             packet.Write((int)Terminal.RequestsID.AUTH);
             if (auth != null)
@@ -174,7 +168,7 @@ namespace Memewars.RealtimeNetworking.Server
                 Server.clients[id].address = address;
                 Server.clients[id].account = auth.accountID;
                 auth.versions = Terminal.clientVersions;
-                string authData = await Data.SerializeAsync<Data.InitializationData>(auth);
+                string authData = await Data.SerializeAsync(auth);
                 byte[] authBytes = await Data.CompressAsync(authData);
                 packet.Write(1);
                 packet.Write(authBytes.Length);
@@ -215,65 +209,6 @@ namespace Memewars.RealtimeNetworking.Server
                 return count;
             });
             return await task;
-        }
-
-        private async static Task<Data.InitializationData> AuthenticatePlayerAsync(int id, string address)
-        {
-            Task<Data.InitializationData> task = Task.Run(() =>
-            {
-                return Retry.Do(() => _AuthenticatePlayerAsync(id, address), TimeSpan.FromSeconds(0.1), 1, false);
-            });
-            return await task;
-        }
-
-        private async static Task<Data.InitializationData> _AuthenticatePlayerAsync(int id, string address)
-        {
-            Data.InitializationData initializationData = new Data.InitializationData();
-            using (NpgsqlConnection connection = GetDbConnection())
-            {
-                string query = String.Format("SELECT id, password, is_online, client_id FROM accounts WHERE address = '{0}'", address);
-                using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                {
-                    using (NpgsqlDataReader reader = command.ExecuteReader())
-                    {
-                        if (reader.HasRows)
-                        {
-                            while (reader.Read())
-                            {
-                                bool online = int.Parse(reader["is_online"].ToString()) > 0;
-                                int online_id = int.Parse(reader["client_id"].ToString());
-                                long _id = long.Parse(reader["id"].ToString());
-                                if (online && Server.clients[online_id].account == _id)
-                                {
-                                    Server.clients[online_id].Disconnect();
-                                }
-                                initializationData.accountID = _id;
-                                initializationData.password = ""; // dont have password
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                // dont have account so we initialize
-                if (initializationData.accountID == 0)
-                {
-                    initializationData.accountID = await new Account{ Address = address }.Create();
-                }
-                
-                // set account as online
-                query = String.Format("UPDATE accounts SET is_online = 1, client_id = {0}, last_login = NOW() at time zone 'utc' WHERE id = {1}", id, initializationData.accountID);
-                using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                {
-                    command.ExecuteNonQuery();
-                }
-                initializationData.serverUnits = GetServerUnits(connection);
-                initializationData.serverSpells = GetServerSpells(connection);
-                initializationData.serverBuildings = GetServerBuildings(connection);
-                initializationData.research = GetResearchList(connection, initializationData.accountID);
-                connection.Close();
-            }
-            return initializationData;
         }
 
         public async static void SyncPlayerData(int id)
@@ -351,327 +286,6 @@ namespace Memewars.RealtimeNetworking.Server
             return await task;
         }
 
-        public async static void LogOut(int id, string address)
-        {
-            long account_id = Server.clients[id].account;
-            int response = await LogOutAsync(account_id, address);
-        }
-
-        private async static Task<int> LogOutAsync(long account_id, string address)
-        {
-            Task<int> task = Task.Run(() =>
-            {
-                return Retry.Do(() => _LogOutAsync(account_id, address), TimeSpan.FromSeconds(0.1), 1, false);
-            });
-            return await task;
-        }
-
-        private static int _LogOutAsync(long account_id, string address)
-        {
-            int response = 0;
-            using (NpgsqlConnection connection = GetDbConnection())
-            {
-                string query = String.Format("SELECT id FROM accounts WHERE id = {0} AND address = '{1}' AND is_online > 0;", account_id, address);
-                bool found = false;
-                using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                {
-                    using (NpgsqlDataReader reader = command.ExecuteReader())
-                    {
-                        if (reader.HasRows)
-                        {
-                            found = true;
-                        }
-                    }
-                }
-
-                if (found)
-                {
-                    query = String.Format("UPDATE accounts SET is_online = 0 WHERE device_id = '{0}';", address);
-                    using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                    {
-                        command.ExecuteNonQuery();
-                    }
-                }
-                connection.Close();
-            }
-            return response;
-        }
-
-        public async static void BuyShield(int id, int pack)
-        {
-            long account_id = Server.clients[id].account;
-            int response = await BuyShieldAsync(account_id, pack);
-            Packet packet = new Packet();
-            packet.Write((int)Terminal.RequestsID.BUYSHIELD);
-            packet.Write(response);
-            packet.Write(pack);
-            Sender.TCP_Send(id, packet);
-        }
-
-        private async static Task<int> BuyShieldAsync(long account_id, int pack)
-        {
-            Task<int> task = Task.Run(() =>
-            {
-                return Retry.Do(() => _BuyShieldAsync(account_id, pack), TimeSpan.FromSeconds(0.1), 1, false);
-            });
-            return await task;
-        }
-
-        private static int _BuyShieldAsync(long account_id, int pack)
-        {
-            int response = 0;
-            using (NpgsqlConnection connection = GetDbConnection())
-            {
-                int cooldown1 = 0;
-                int cooldown2 = 0;
-                int cooldown3 = 0;
-                int gems = 0;
-                string query = String.Format("SELECT gems, CASE WHEN shld_cldn_1 <= NOW() at time zone 'utc' THEN 1 ELSE 0 END AS cd1, CASE WHEN shld_cldn_2 <= NOW() at time zone 'utc' THEN 1 ELSE 0 END AS cd2, CASE WHEN shld_cldn_3 <= NOW() at time zone 'utc' THEN 1 ELSE 0 END AS cd3 FROM accounts WHERE id = {0};", account_id);
-                bool ok = false;
-                using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                {
-                    using (NpgsqlDataReader reader = command.ExecuteReader())
-                    {
-                        if (reader.HasRows)
-                        {
-                            ok = true;
-                            while (reader.Read())
-                            {
-                                int.TryParse(reader["cd1"].ToString(), out cooldown1);
-                                int.TryParse(reader["cd2"].ToString(), out cooldown2);
-                                int.TryParse(reader["cd3"].ToString(), out cooldown3);
-                                int.TryParse(reader["gems"].ToString(), out gems);
-                            }
-                        }
-                    }
-                }
-                if (ok)
-                {
-                    // todo
-                    int price = 99999;
-                    switch (pack)
-                    {
-                        case 1: price = 10; break;
-                        case 2: price = 100; break;
-                        case 3: price = 250; break;
-                    }
-                    if(gems >= price)
-                    {
-                        if ((pack == 1 && cooldown1 == 1) || (pack == 2 && cooldown2 == 1) || (pack == 3 && cooldown1 == 3))
-                        {
-                            if(SpendResources(connection, account_id, 0, 0, price, 0))
-                            {
-                                // todo
-                                switch (pack)
-                                {
-                                    case 1:
-                                        query = String.Format("UPDATE accounts SET shld_cldn_1 = NOW() at time zone 'utc' + INTERVAL '23 HOUR' WHERE id = {0};", account_id);
-                                        using (NpgsqlCommand command = new NpgsqlCommand(query, connection)) { command.ExecuteNonQuery(); }
-                                        AddShield(connection, account_id, 23 * 60 * 60);
-                                        break;
-                                    case 2:
-                                        query = String.Format("UPDATE accounts SET shld_cldn_2 = NOW() at time zone 'utc' + INTERVAL '5 DAY' WHERE id = {0};", account_id);
-                                        using (NpgsqlCommand command = new NpgsqlCommand(query, connection)) { command.ExecuteNonQuery(); }
-                                        AddShield(connection, account_id, 5 * 24 * 60 * 60);
-                                        break;
-                                    case 3:
-                                        query = String.Format("UPDATE accounts SET shld_cldn_3 = NOW() at time zone 'utc' + INTERVAL '35 DAY' WHERE id = {0};", account_id);
-                                        using (NpgsqlCommand command = new NpgsqlCommand(query, connection)) { command.ExecuteNonQuery(); }
-                                        AddShield(connection, account_id, 35 * 24 * 60 * 60);
-                                        break;
-                                }
-                                response = 1;
-                            }
-                            else
-                            {
-                                response = 2;
-                            }
-                        }
-                        else
-                        {
-                            response = 3;
-                        }
-                    }
-                    else
-                    {
-                        response = 2;
-                    }
-                }
-                connection.Close();
-            }
-            return response;
-        }
-
-        public async static void BuyGem(int id, int pack, string token, string product, string password, string package, string market)
-        {
-            long account_id = Server.clients[id].account;
-            // var valid = await ValidateBazzarPurchaseAsync(package, product, token);
-            int response = await BuyGemAsync(account_id, pack, token, password, product, package, false, "0", market);
-            Packet packet = new Packet();
-            packet.Write((int)Terminal.RequestsID.BUYGEM);
-            packet.Write(response);
-            packet.Write(pack);
-            Sender.TCP_Send(id, packet);
-        }
-
-        private async static Task<int> BuyGemAsync(long account_id, int pack, string token, string password, string product, string package, bool valid, string price, string market)
-        {
-            Task<int> task = Task.Run(() =>
-            {
-                return Retry.Do(() => _BuyGemAsync(account_id, pack, token, password, product, package, valid, price, market), TimeSpan.FromSeconds(0.1), 1, false);
-            });
-            return await task;
-        }
-
-        private static int _BuyGemAsync(long account_id, int pack, string token, string password, string product, string package, bool valid, string price, string market)
-        {
-            int response = 0;
-            using (NpgsqlConnection connection = GetDbConnection())
-            {
-                string query = String.Format("SELECT id FROM accounts WHERE id = {0} AND password = '{1}';", account_id, password);
-                bool ok = false;
-                using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                {
-                    using (NpgsqlDataReader reader = command.ExecuteReader())
-                    {
-                        if (reader.HasRows)
-                        {
-                            ok = true;
-                        }
-                    }
-                }
-                if (ok)
-                {
-                    query = String.Format("SELECT id FROM iap WHERE product_id = '{0}' AND token = '{1}';", product, token);
-                    ok = true;
-                    using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                    {
-                        using (NpgsqlDataReader reader = command.ExecuteReader())
-                        {
-                            if (reader.HasRows)
-                            {
-                                ok = false;
-                            }
-                        }
-                    }
-
-                    // todo
-                    int gems = 0;
-                    switch (pack)
-                    {
-                        case 1: gems = 100; break;
-                        case 2: gems = 300; break;
-                        case 3: gems = 1000; break;
-                        case 4: gems = 2500; break;
-                        case 5: gems = 6000; break;
-                    }
-
-                    if (gems > 0)
-                    {
-                        query = String.Format("INSERT INTO iap (account_id, market, product_id, token, price, currency, validated) VALUES({0}, '{1}', '{2}', '{3}', '{4}', 'IRR', {5});", account_id, market, product, token, price, valid ? 1 : 0);
-                        using (NpgsqlCommand command = new NpgsqlCommand(query, connection)) { command.ExecuteNonQuery(); }
-                        query = String.Format("UPDATE accounts SET gems = gems + {0} WHERE id = {1};", gems, account_id);
-                        using (NpgsqlCommand command = new NpgsqlCommand(query, connection)) { command.ExecuteNonQuery(); }
-                        response = 1;
-                    }
-                    else
-                    {
-                        response = 2;
-                    }
-                }
-                connection.Close();
-            }
-            return response;
-        }
-
-        private static readonly string bazzarClientID = "FEmqTV6tmWGbBIqAzvuEOy7V504EX2T5c5GYfzzT";
-        private static readonly string bazzarClientSecret = "Dh2JvsJrDaaRtFovC0ASJ34kpopH8v4vM8KLOj4WZACDHFFzzzsT3WgaXllq";
-        private static readonly string bazzarRefreshToken = "KLVfDElMUuAURX8WXdBJEEYQLtW8QA";
-
-        [Serializable]
-        private struct BazzarToken
-        {
-            public string access_token;
-        }
-
-        [Serializable]
-        private struct BazzarValidateResult
-        {
-            public bool isConsumed;
-            public bool isRefund;
-            public string kind;
-            public string payload;
-            public string time;
-        }
-
-        // todo
-        /* private async static Task<(bool, string)> ValidateBazzarPurchaseAsync(string package, string product, string order)
-        {
-            try
-            {
-                var url = "https://pardakht.cafebazaar.ir/devapi/v2/auth/token/";
-                var values = new Dictionary<string, string>
-                {
-                    { "grant_type", "refresh_token" },
-                    { "client_id", bazzarClientID },
-                    { "client_secret", bazzarClientSecret },
-                    { "refresh_token", bazzarRefreshToken }
-                };
-                var content = new FormUrlEncodedContent(values);
-                using var client = new HttpClient();
-                var post = await client.PostAsync(url, content);
-                var responseString = await post.Content.ReadAsStreamAsync();
-                BazzarToken bazzarToken = await JsonSerializer.DeserializeAsync<BazzarToken>(responseString);
-                url = "https://pardakht.cafebazaar.ir/devapi/v2/api/validate/" + package + "/inapp/" + product + "/purchases/" + order + "/?access_token=" + bazzarToken.access_token;
-                var get = await client.GetStreamAsync(url);
-                BazzarValidateResult bazzarResult = await JsonSerializer.DeserializeAsync<BazzarValidateResult>(get);
-                if (bazzarResult.isRefund)
-                {
-                    return (false, "0");
-                }
-                else
-                {
-                    return (true, bazzarResult.payload);
-                }
-            }
-            catch (Exception ex)
-            {
-                Tools.LogError(ex.Message, ex.StackTrace, "IAP");
-                return (false, "0");
-            }
-        } */
-
-        public async static void BuyGold(int id, int pack)
-        {
-            long account_id = Server.clients[id].account;
-            int response = await BuyGoldAsync(account_id, pack);
-            Packet packet = new Packet();
-            packet.Write((int)Terminal.RequestsID.BUYSHIELD);
-            packet.Write(response);
-            packet.Write(pack);
-            Sender.TCP_Send(id, packet);
-        }
-
-        // todo
-        private async static Task<int> BuyGoldAsync(long account_id, int pack)
-        {
-            Task<int> task = Task.Run(() =>
-            {
-                return Retry.Do(() => _BuyGoldAsync(account_id, pack), TimeSpan.FromSeconds(0.1), 1, false);
-            });
-            return await task;
-        }
-
-        private static int _BuyGoldAsync(long account_id, int pack)
-        {
-            int response = 0;
-            using (NpgsqlConnection connection = GetDbConnection())
-            {
-                connection.Close();
-            }
-            return response;
-        }
-
         public async static void GetPlayersRanking(int id, int page)
         {
             long account_id = Server.clients[id].account;
@@ -700,8 +314,6 @@ namespace Memewars.RealtimeNetworking.Server
             });
             return await task;
         }
-
-        private static int players_ranking_per_page = 30;
 
         private static Data.PlayersRanking _GetPlayersRankingAsync(int page, long account_id = 0)
         {
@@ -1508,87 +1120,6 @@ namespace Memewars.RealtimeNetworking.Server
                 connection.Close();
             }
             return response;
-        }
-
-        #endregion
-
-        #region Server Buildings
-
-        private async static Task<ServerBuilding> GetServerBuildingAsync(string id, int level)
-        {
-            Task<ServerBuilding> task = Task.Run(() =>
-            {
-                return Retry.Do(() => _GetServerBuildingAsync(id, level), TimeSpan.FromSeconds(0.1), 1, false);
-            });
-            return await task;
-        }
-
-        private static ServerBuilding _GetServerBuildingAsync(string id, int level)
-        {
-            ServerBuilding data = null;
-            using (NpgsqlConnection connection = GetDbConnection())
-            {
-                string query = String.Format("SELECT id, req_gold, req_elixir, req_gems, req_dark_elixir, columns_count, rows_count, build_time, gained_xp FROM server_buildings WHERE global_id = '{0}' AND level = {1};", id, level);
-                using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                {
-                    using (NpgsqlDataReader reader = command.ExecuteReader())
-                    {
-                        if (reader.HasRows)
-                        {
-                            while (reader.Read())
-                            {
-                                data = new ServerBuilding();
-                                data.id = id;
-                                long.TryParse(reader["id"].ToString(), out data.databaseID);
-                                int.TryParse(reader["req_gold"].ToString(), out data.requiredGold);
-                                int.TryParse(reader["req_elixir"].ToString(), out data.requiredElixir);
-                                int.TryParse(reader["req_gems"].ToString(), out data.requiredGems);
-                                int.TryParse(reader["req_dark_elixir"].ToString(), out data.requiredDarkElixir);
-                                data.level = level;
-                                int.TryParse(reader["columns_count"].ToString(), out data.columns);
-                                int.TryParse(reader["rows_count"].ToString(), out data.rows);
-                                int.TryParse(reader["build_time"].ToString(), out data.buildTime);
-                                int.TryParse(reader["gained_xp"].ToString(), out data.gainedXp);
-                            }
-                        }
-                    }
-                }
-                connection.Close();
-            }
-            return data;
-        }
-
-        private static List<ServerBuilding> GetServerBuildings(NpgsqlConnection connection)
-        {
-            List<ServerBuilding> buildings = new List<ServerBuilding>();
-            string query = String.Format("SELECT id, global_id, level, req_gold, req_elixir, req_gems, req_dark_elixir, columns_count, rows_count, build_time, gained_xp FROM server_buildings;");
-            using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-            {
-                using (NpgsqlDataReader reader = command.ExecuteReader())
-                {
-                    if (reader.HasRows)
-                    {
-                        while (reader.Read())
-                        {
-                            ServerBuilding building = new ServerBuilding();
-                            long.TryParse(reader["id"].ToString(), out building.databaseID);
-                            // building.id = (BuildingID)Enum.Parse(typeof(BuildingID), reader["global_id"].ToString());
-                            building.id = reader["global_id"].ToString();
-                            int.TryParse(reader["level"].ToString(), out building.level);
-                            int.TryParse(reader["req_gold"].ToString(), out building.requiredGold);
-                            int.TryParse(reader["req_elixir"].ToString(), out building.requiredElixir);
-                            int.TryParse(reader["req_gems"].ToString(), out building.requiredGems);
-                            int.TryParse(reader["req_dark_elixir"].ToString(), out building.requiredDarkElixir);
-                            int.TryParse(reader["columns_count"].ToString(), out building.columns);
-                            int.TryParse(reader["rows_count"].ToString(), out building.rows);
-                            int.TryParse(reader["build_time"].ToString(), out building.buildTime);
-                            int.TryParse(reader["gained_xp"].ToString(), out building.gainedXp);
-                            buildings.Add(building);
-                        }
-                    }
-                }
-            }
-            return buildings;
         }
 
         #endregion
@@ -2627,7 +2158,7 @@ namespace Memewars.RealtimeNetworking.Server
             long account_id = Server.clients[id].account;
             Packet packet = new Packet();
             packet.Write((int)Terminal.RequestsID.BUILD);
-            ServerBuilding building = await GetServerBuildingAsync(buildingID, 1);
+            ServerBuilding building = await Building.GetServerBuildingAsync(buildingID, 1);
             int response = await PlaceBuildingAsync(account_id, building, x, y, layout, layoutID);
             packet.Write(response);
             Sender.TCP_Send(id, packet);
@@ -3253,12 +2784,12 @@ namespace Memewars.RealtimeNetworking.Server
             using (NpgsqlConnection connection = GetDbConnection())
             {
                 int level = 1;
-                Data.Research research = GetResearch(connection, account_id, globalID, Data.ResearchType.unit);
+                Research research = GetResearch(connection, account_id, globalID, ResearchType.unit);
                 if (research != null)
                 {
                     level = research.level;
                 }
-                Data.ServerUnit unit = GetServerUnit(connection, globalID, level);
+                ServerUnit unit = Unit.GetServerUnit(globalID, level);
                 if (unit != null)
                 {
                     int capacity = 0;
@@ -3313,78 +2844,6 @@ namespace Memewars.RealtimeNetworking.Server
             }
             return response;
         }
-
-        private static List<Data.ServerUnit> GetServerUnits(NpgsqlConnection connection)
-        {
-            List<Data.ServerUnit> units = new List<Data.ServerUnit>();
-            string query = String.Format("SELECT global_id, level, req_gold, req_elixir, req_gem, req_dark_elixir, train_time, health, housing, research_time, research_gold, research_elixir, research_dark_elixir, research_gems, research_xp FROM server_units;");
-            using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-            {
-                using (NpgsqlDataReader reader = command.ExecuteReader())
-                {
-                    if (reader.HasRows)
-                    {
-                        while (reader.Read())
-                        {
-                            Data.ServerUnit unit = new Data.ServerUnit();
-                            unit.id = (UnitID)Enum.Parse(typeof(UnitID), reader["global_id"].ToString());
-                            int.TryParse(reader["level"].ToString(), out unit.level);
-                            int.TryParse(reader["req_gold"].ToString(), out unit.requiredGold);
-                            int.TryParse(reader["req_elixir"].ToString(), out unit.requiredElixir);
-                            int.TryParse(reader["req_gem"].ToString(), out unit.requiredGems);
-                            int.TryParse(reader["req_dark_elixir"].ToString(), out unit.requiredDarkElixir);
-                            int.TryParse(reader["train_time"].ToString(), out unit.trainTime);
-                            int.TryParse(reader["health"].ToString(), out unit.health);
-                            int.TryParse(reader["housing"].ToString(), out unit.housing);
-                            int.TryParse(reader["research_time"].ToString(), out unit.researchTime);
-                            int.TryParse(reader["research_gold"].ToString(), out unit.researchGold);
-                            int.TryParse(reader["research_elixir"].ToString(), out unit.researchElixir);
-                            int.TryParse(reader["research_dark_elixir"].ToString(), out unit.researchDarkElixir);
-                            int.TryParse(reader["research_gems"].ToString(), out unit.researchGems);
-                            int.TryParse(reader["research_xp"].ToString(), out unit.researchXp);
-                            units.Add(unit);
-                        }
-                    }
-                }
-            }
-            return units;
-        }
-
-        private static Data.ServerUnit GetServerUnit(NpgsqlConnection connection, string id, int level)
-        {
-            Data.ServerUnit unit = null;
-            string query = String.Format("SELECT global_id, level, req_gold, req_elixir, req_gem, req_dark_elixir, train_time, health, housing, research_time, research_gold, research_elixir, research_dark_elixir, research_gems, research_xp FROM server_units WHERE global_id = '{0}' AND level = {1};", id, level);
-            using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-            {
-                using (NpgsqlDataReader reader = command.ExecuteReader())
-                {
-                    if (reader.HasRows)
-                    {
-                        while (reader.Read())
-                        {
-                            unit = new Data.ServerUnit();
-                            unit.id = (UnitID)Enum.Parse(typeof(UnitID), reader["global_id"].ToString());
-                            int.TryParse(reader["level"].ToString(), out unit.level);
-                            int.TryParse(reader["req_gold"].ToString(), out unit.requiredGold);
-                            int.TryParse(reader["req_elixir"].ToString(), out unit.requiredElixir);
-                            int.TryParse(reader["req_gem"].ToString(), out unit.requiredGems);
-                            int.TryParse(reader["req_dark_elixir"].ToString(), out unit.requiredDarkElixir);
-                            int.TryParse(reader["train_time"].ToString(), out unit.trainTime);
-                            int.TryParse(reader["health"].ToString(), out unit.health);
-                            int.TryParse(reader["housing"].ToString(), out unit.housing);
-                            int.TryParse(reader["research_time"].ToString(), out unit.researchTime);
-                            int.TryParse(reader["research_gold"].ToString(), out unit.researchGold);
-                            int.TryParse(reader["research_elixir"].ToString(), out unit.researchElixir);
-                            int.TryParse(reader["research_dark_elixir"].ToString(), out unit.researchDarkElixir);
-                            int.TryParse(reader["research_gems"].ToString(), out unit.researchGems);
-                            int.TryParse(reader["research_xp"].ToString(), out unit.researchXp);
-                        }
-                    }
-                }
-            }
-            return unit;
-        }
-
         public async static void CancelTrainUnit(int id, long databaseID)
         {
             Packet packet = new Packet();
@@ -4500,48 +3959,6 @@ namespace Memewars.RealtimeNetworking.Server
         #endregion
 
         #region Spell
-
-        private static List<ServerSpell> GetServerSpells(NpgsqlConnection connection)
-        {
-            List<ServerSpell> units = new List<ServerSpell>();
-            string query = String.Format("SELECT id, global_id, level, req_gold, req_elixir, req_gem, req_dark_elixir, brew_time, housing, radius, pulses_count, pulses_duration, pulses_value, pulses_value_2, research_time, research_gold, research_elixir, research_dark_elixir, research_gems, research_xp FROM server_spells;");
-            using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-            {
-                using (NpgsqlDataReader reader = command.ExecuteReader())
-                {
-                    if (reader.HasRows)
-                    {
-                        while (reader.Read())
-                        {
-                            ServerSpell spell = new ServerSpell();
-                            long.TryParse(reader["id"].ToString(), out spell.databaseID);
-                            spell.id = (SpellID)Enum.Parse(typeof(SpellID), reader["global_id"].ToString());
-                            int.TryParse(reader["level"].ToString(), out spell.level);
-                            int.TryParse(reader["req_gold"].ToString(), out spell.requiredGold);
-                            int.TryParse(reader["req_elixir"].ToString(), out spell.requiredElixir);
-                            int.TryParse(reader["req_gem"].ToString(), out spell.requiredGems);
-                            int.TryParse(reader["req_dark_elixir"].ToString(), out spell.requiredDarkElixir);
-                            int.TryParse(reader["brew_time"].ToString(), out spell.brewTime);
-                            int.TryParse(reader["housing"].ToString(), out spell.housing);
-                            float.TryParse(reader["radius"].ToString(), out spell.radius);
-                            int.TryParse(reader["pulses_count"].ToString(), out spell.pulsesCount);
-                            float.TryParse(reader["pulses_duration"].ToString(), out spell.pulsesDuration);
-                            float.TryParse(reader["pulses_value"].ToString(), out spell.pulsesValue);
-                            float.TryParse(reader["pulses_value_2"].ToString(), out spell.pulsesValue2);
-                            int.TryParse(reader["research_time"].ToString(), out spell.researchTime);
-                            int.TryParse(reader["research_gold"].ToString(), out spell.researchGold);
-                            int.TryParse(reader["research_elixir"].ToString(), out spell.researchElixir);
-                            int.TryParse(reader["research_dark_elixir"].ToString(), out spell.researchDarkElixir);
-                            int.TryParse(reader["research_gems"].ToString(), out spell.researchGems);
-                            int.TryParse(reader["research_xp"].ToString(), out spell.researchXp);
-                            units.Add(spell);
-                        }
-                    }
-                }
-            }
-            return units;
-        }
-
         public async static void BrewSpell(int id, string globalID)
         {
             Packet packet = new Packet();
@@ -4567,7 +3984,7 @@ namespace Memewars.RealtimeNetworking.Server
             using (NpgsqlConnection connection = GetDbConnection())
             {
                 int level = 1;
-                Data.Research research = GetResearch(connection, account_id, globalID, Data.ResearchType.spell);
+                Research research = GetResearch(connection, account_id, globalID, ResearchType.spell);
                 if (research != null)
                 {
                     level = research.level;
@@ -4802,9 +4219,9 @@ namespace Memewars.RealtimeNetworking.Server
 
         #region Research
 
-        private static Data.Research GetResearch(NpgsqlConnection connection, long account_id, string global_id, Data.ResearchType type, bool createIfNotExist = false)
+        private static Research GetResearch(NpgsqlConnection connection, long account_id, string global_id, ResearchType type, bool createIfNotExist = false)
         {
-            Data.Research research = null;
+            Research research = null;
             string query = String.Format("SELECT id, level, researching, CASE WHEN researching > NOW() at time zone 'utc' THEN 1 ELSE 0 END AS is_researching FROM research WHERE account_id = {0} AND type = {1} AND global_id = '{2}';", account_id, (int)type, global_id);
             using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
             {
@@ -4814,7 +4231,7 @@ namespace Memewars.RealtimeNetworking.Server
                     {
                         while (reader.Read())
                         {
-                            research = new Data.Research();
+                            research = new Research();
                             int is_researching = 0;
                             int.TryParse(reader["is_researching"].ToString(), out is_researching);
                             long.TryParse(reader["id"].ToString(), out research.id);
@@ -4833,7 +4250,7 @@ namespace Memewars.RealtimeNetworking.Server
             }
             if (createIfNotExist && research == null)
             {
-                research = new Data.Research();
+                research = new Research();
                 query = String.Format("INSERT INTO research (account_id, type, global_id) VALUES({0}, {1}, '{2}') RETURNING id;", account_id, (int)type, global_id);
                 using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                 {
@@ -4847,42 +4264,7 @@ namespace Memewars.RealtimeNetworking.Server
             return research;
         }
 
-        private static List<Data.Research> GetResearchList(NpgsqlConnection connection, long account_id)
-        {
-            List<Data.Research> list = new List<Data.Research>();
-            string query = String.Format("SELECT id, level, type, global_id, researching, CASE WHEN researching > NOW() at time zone 'utc' THEN 1 ELSE 0 END AS is_researching FROM research WHERE account_id = {0};", account_id);
-            using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-            {
-                using (NpgsqlDataReader reader = command.ExecuteReader())
-                {
-                    if (reader.HasRows)
-                    {
-                        while (reader.Read())
-                        {
-                            Data.Research research = new Data.Research();
-                            long.TryParse(reader["id"].ToString(), out research.id);
-                            int type = 1;
-                            int.TryParse(reader["type"].ToString(), out type);
-                            research.type = (Data.ResearchType)type;
-                            research.globalID = reader["global_id"].ToString();
-                            int.TryParse(reader["level"].ToString(), out research.level);
-                            int is_researching = 0;
-                            int.TryParse(reader["is_researching"].ToString(), out is_researching);
-                            DateTime.TryParse(reader["researching"].ToString(), out research.end);
-                            research.researching = (is_researching == 1);
-                            if (research.researching)
-                            {
-                                research.level -= 1;
-                            }
-                            list.Add(research);
-                        }
-                    }
-                }
-            }
-            return list;
-        }
-
-        public async static void DoResearch(int id, Data.ResearchType type, string global_id)
+        public async static void DoResearch(int id, ResearchType type, string global_id)
         {
             long account_id = Server.clients[id].account;
             var res = await DoResearchAsync(account_id, type, global_id);
@@ -4891,7 +4273,7 @@ namespace Memewars.RealtimeNetworking.Server
             packet.Write(res.Item1);
             if (res.Item1 == 1)
             {
-                string data = Data.Serialize<Data.Research>(res.Item2);
+                string data = Data.Serialize<Research>(res.Item2);
                 byte[] bytes = await Data.CompressAsync(data);
                 packet.Write(bytes.Length);
                 packet.Write(bytes);
@@ -4899,18 +4281,18 @@ namespace Memewars.RealtimeNetworking.Server
             Sender.TCP_Send(id, packet);
         }
 
-        private async static Task<(int, Data.Research)> DoResearchAsync(long account_id, Data.ResearchType type, string global_id)
+        private async static Task<(int, Research)> DoResearchAsync(long account_id, ResearchType type, string global_id)
         {
-            Task<(int, Data.Research)> task = Task.Run(() =>
+            Task<(int, Research)> task = Task.Run(() =>
             {
                 return Retry.Do(() => _DoResearchAsync(account_id, type, global_id), TimeSpan.FromSeconds(0.1), 1, false);
             });
             return await task;
         }
 
-        private static (int, Data.Research) _DoResearchAsync(long account_id, Data.ResearchType type, string global_id)
+        private static (int, Research) _DoResearchAsync(long account_id, ResearchType type, string global_id)
         {
-            Data.Research research = null;
+            Research research = null;
             int response = 0;
             using (NpgsqlConnection connection = GetDbConnection())
             {
@@ -4922,9 +4304,9 @@ namespace Memewars.RealtimeNetworking.Server
                 else
                 {
                     int time = 0;
-                    if (type == Data.ResearchType.unit)
+                    if (type == ResearchType.unit)
                     {
-                        Data.ServerUnit unit = GetServerUnit(connection, global_id, research.level + 1);
+                        ServerUnit unit = Unit.GetServerUnit(global_id, research.level + 1);
                         if (unit != null)
                         {
                             if (SpendResources(connection, account_id, unit.researchGold, unit.researchElixir, unit.researchGems, unit.researchDarkElixir))
@@ -4939,7 +4321,7 @@ namespace Memewars.RealtimeNetworking.Server
                             }
                         }
                     }
-                    else if (type == Data.ResearchType.spell)
+                    else if (type == ResearchType.spell)
                     {
                         ServerSpell spell = GetServerSpell(connection, global_id, research.level + 1);
                         if (spell != null)

@@ -139,21 +139,6 @@ namespace Memewars.RealtimeNetworking.Server
             return sBuilder.ToString();
         }
 
-        public enum ResearchType
-        {
-            unit = 1, spell = 2
-        }
-
-        public class Research
-        {
-            public long id;
-            public ResearchType type;
-            public string globalID;
-            public int level;
-            public bool researching;
-            public DateTime end;
-        }
-
         public enum ChatType
         {
             global = 1,
@@ -435,36 +420,6 @@ namespace Memewars.RealtimeNetworking.Server
             public int lootGoldStorage = 0;
             public int lootElixirStorage = 0;
             public int lootDarkStorage = 0;
-        }
-
-        public class InitializationData
-        {
-            public long accountID = 0;
-            public string password = "";
-            public string[] versions;
-            public List<ServerBuilding> serverBuildings = new List<ServerBuilding>();
-            public List<ServerUnit> serverUnits = new List<ServerUnit>();
-            public List<ServerSpell> serverSpells = new List<ServerSpell>();
-            public List<Research> research = new List<Research>();
-        }
-
-        public class ServerUnit
-        {
-            public UnitID id = UnitID.barbarian;
-            public int level = 0;
-            public int requiredGold = 0;
-            public int requiredElixir = 0;
-            public int requiredGems = 0;
-            public int requiredDarkElixir = 0;
-            public int trainTime = 0;
-            public int health = 0;
-            public int housing = 0;
-            public int researchTime = 0;
-            public int researchGold = 0;
-            public int researchElixir = 0;
-            public int researchDarkElixir = 0;
-            public int researchGems = 0;
-            public int researchXp = 0;
         }
         public static T CloneClass<T>(this T target)
         {

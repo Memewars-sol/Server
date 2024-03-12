@@ -141,100 +141,96 @@ namespace Models {
             return data;
         }
 
-        private static List<ServerBuilding> GetServerBuildings(NpgsqlConnection connection)
+        public static List<ServerBuilding> GetServerBuildings()
         {
             List<ServerBuilding> buildings = new List<ServerBuilding>();
             string query = String.Format("SELECT id, global_id, level, req_gold, req_elixir, req_gems, req_dark_elixir, columns_count, rows_count, build_time, gained_xp FROM server_buildings;");
-            using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
+            using NpgsqlConnection connection = Database.GetDbConnection();
+            using NpgsqlCommand command = new(query, connection);
+            using NpgsqlDataReader reader = command.ExecuteReader();
+            if (reader.HasRows)
             {
-                using (NpgsqlDataReader reader = command.ExecuteReader())
+                while (reader.Read())
                 {
-                    if (reader.HasRows)
-                    {
-                        while (reader.Read())
-                        {
-                            ServerBuilding building = new ServerBuilding();
-                            long.TryParse(reader["id"].ToString(), out building.databaseID);
-                            // building.id = (BuildingID)Enum.Parse(typeof(BuildingID), reader["global_id"].ToString());
-                            building.id = reader["global_id"].ToString();
-                            int.TryParse(reader["level"].ToString(), out building.level);
-                            int.TryParse(reader["req_gold"].ToString(), out building.requiredGold);
-                            int.TryParse(reader["req_elixir"].ToString(), out building.requiredElixir);
-                            int.TryParse(reader["req_gems"].ToString(), out building.requiredGems);
-                            int.TryParse(reader["req_dark_elixir"].ToString(), out building.requiredDarkElixir);
-                            int.TryParse(reader["columns_count"].ToString(), out building.columns);
-                            int.TryParse(reader["rows_count"].ToString(), out building.rows);
-                            int.TryParse(reader["build_time"].ToString(), out building.buildTime);
-                            int.TryParse(reader["gained_xp"].ToString(), out building.gainedXp);
-                            buildings.Add(building);
-                        }
-                    }
+                    ServerBuilding building = new ServerBuilding();
+                    _ = long.TryParse(reader["id"].ToString(), out building.databaseID);
+                    // building.id = (BuildingID)Enum.Parse(typeof(BuildingID), reader["global_id"].ToString());
+                    _ = building.id = reader["global_id"].ToString();
+                    _ = int.TryParse(reader["level"].ToString(), out building.level);
+                    _ = int.TryParse(reader["req_gold"].ToString(), out building.requiredGold);
+                    _ = int.TryParse(reader["req_elixir"].ToString(), out building.requiredElixir);
+                    _ = int.TryParse(reader["req_gems"].ToString(), out building.requiredGems);
+                    _ = int.TryParse(reader["req_dark_elixir"].ToString(), out building.requiredDarkElixir);
+                    _ = int.TryParse(reader["columns_count"].ToString(), out building.columns);
+                    _ = int.TryParse(reader["rows_count"].ToString(), out building.rows);
+                    _ = int.TryParse(reader["build_time"].ToString(), out building.buildTime);
+                    _ = int.TryParse(reader["gained_xp"].ToString(), out building.gainedXp);
+                    buildings.Add(building);
                 }
             }
+            connection.Close();
             return buildings;
         }
         private static List<Building> GetBuildings(long account)
         {
             List<Building> data = new List<Building>();
             string query = String.Format("SELECT buildings.id, buildings.global_id, buildings.level, buildings.x_position, buildings.x_war, buildings.y_war, buildings.boost, buildings.gold_storage, buildings.elixir_storage, buildings.dark_elixir_storage, buildings.y_position, buildings.construction_time, buildings.is_constructing, buildings.construction_build_time, server_buildings.columns_count, server_buildings.rows_count, server_buildings.health, server_buildings.speed, server_buildings.radius, server_buildings.capacity, server_buildings.gold_capacity, server_buildings.elixir_capacity, server_buildings.dark_elixir_capacity, server_buildings.damage, server_buildings.target_type, server_buildings.blind_radius, server_buildings.splash_radius, server_buildings.projectile_speed FROM buildings LEFT JOIN server_buildings ON buildings.global_id = server_buildings.global_id AND buildings.level = server_buildings.level WHERE buildings.account_id = {0};", account);
-            using (NpgsqlCommand command = new NpgsqlCommand(query, Database.GetDbConnection()))
+            using NpgsqlConnection connection = Database.GetDbConnection();
+            using NpgsqlCommand command = new(query, connection);
+            using NpgsqlDataReader reader = command.ExecuteReader();
+            if (reader.HasRows)
             {
-                using (NpgsqlDataReader reader = command.ExecuteReader())
+                while (reader.Read())
                 {
-                    if (reader.HasRows)
+                    Building building = new Building
                     {
-                        while (reader.Read())
-                        {
-                            Building building = new Building();
-                            building.id = (BuildingID)Enum.Parse(typeof(BuildingID), reader["global_id"].ToString());
-                            long.TryParse(reader["id"].ToString(), out building.databaseID);
-                            int.TryParse(reader["level"].ToString(), out building.level);
-                            int.TryParse(reader["x_position"].ToString(), out building.x);
-                            int.TryParse(reader["y_position"].ToString(), out building.y);
-                            int.TryParse(reader["x_war"].ToString(), out building.warX);
-                            int.TryParse(reader["y_war"].ToString(), out building.warY);
-                            int.TryParse(reader["columns_count"].ToString(), out building.columns);
-                            int.TryParse(reader["rows_count"].ToString(), out building.rows);
+                        id = (BuildingID)Enum.Parse(typeof(BuildingID), reader["global_id"].ToString())
+                    };
+                    _ = long.TryParse(reader["id"].ToString(), out building.databaseID);
+                    _ = int.TryParse(reader["level"].ToString(), out building.level);
+                    _ = int.TryParse(reader["x_position"].ToString(), out building.x);
+                    _ = int.TryParse(reader["y_position"].ToString(), out building.y);
+                    _ = int.TryParse(reader["x_war"].ToString(), out building.warX);
+                    _ = int.TryParse(reader["y_war"].ToString(), out building.warY);
+                    _ = int.TryParse(reader["columns_count"].ToString(), out building.columns);
+                    _ = int.TryParse(reader["rows_count"].ToString(), out building.rows);
 
-                            float storage = 0;
-                            float.TryParse(reader["gold_storage"].ToString(), out storage);
-                            building.goldStorage = (int)Math.Floor(storage);
+                    _ = float.TryParse(reader["gold_storage"].ToString(), out float storage);
+                    building.goldStorage = (int)Math.Floor(storage);
 
-                            storage = 0;
-                            float.TryParse(reader["elixir_storage"].ToString(), out storage);
-                            building.elixirStorage = (int)Math.Floor(storage);
+                    storage = 0;
+                    _ = float.TryParse(reader["elixir_storage"].ToString(), out storage);
+                    building.elixirStorage = (int)Math.Floor(storage);
 
-                            storage = 0;
-                            float.TryParse(reader["dark_elixir_storage"].ToString(), out storage);
-                            building.darkStorage = (int)Math.Floor(storage);
+                    storage = 0;
+                    _ = float.TryParse(reader["dark_elixir_storage"].ToString(), out storage);
+                    building.darkStorage = (int)Math.Floor(storage);
 
-                            DateTime.TryParse(reader["boost"].ToString(), out building.boost);
-                            float.TryParse(reader["damage"].ToString(), out building.damage);
-                            int.TryParse(reader["capacity"].ToString(), out building.capacity);
-                            int.TryParse(reader["gold_capacity"].ToString(), out building.goldCapacity);
-                            int.TryParse(reader["elixir_capacity"].ToString(), out building.elixirCapacity);
-                            int.TryParse(reader["dark_elixir_capacity"].ToString(), out building.darkCapacity);
-                            float.TryParse(reader["speed"].ToString(), out building.speed);
-                            float.TryParse(reader["radius"].ToString(), out building.radius);
-                            int.TryParse(reader["health"].ToString(), out building.health);
-                            DateTime.TryParse(reader["construction_time"].ToString(), out building.constructionTime);
-                            float.TryParse(reader["blind_radius"].ToString(), out building.blindRange);
-                            float.TryParse(reader["splash_radius"].ToString(), out building.splashRange);
-                            float.TryParse(reader["projectile_speed"].ToString(), out building.rangedSpeed);
-                            string tt = reader["target_type"].ToString();
-                            if (!string.IsNullOrEmpty(tt))
-                            {
-                                building.targetType = (BuildingTargetType)Enum.Parse(typeof(BuildingTargetType), tt);
-                            }
-                            int isConstructing = 0;
-                            int.TryParse(reader["is_constructing"].ToString(), out isConstructing);
-                            building.isConstructing = isConstructing > 0;
-                            int.TryParse(reader["construction_build_time"].ToString(), out building.buildTime);
-                            data.Add(building);
-                        }
+                    _ = DateTime.TryParse(reader["boost"].ToString(), out building.boost);
+                    _ = float.TryParse(reader["damage"].ToString(), out building.damage);
+                    _ = int.TryParse(reader["capacity"].ToString(), out building.capacity);
+                    _ = int.TryParse(reader["gold_capacity"].ToString(), out building.goldCapacity);
+                    _ = int.TryParse(reader["elixir_capacity"].ToString(), out building.elixirCapacity);
+                    _ = int.TryParse(reader["dark_elixir_capacity"].ToString(), out building.darkCapacity);
+                    _ = float.TryParse(reader["speed"].ToString(), out building.speed);
+                    _ = float.TryParse(reader["radius"].ToString(), out building.radius);
+                    _ = int.TryParse(reader["health"].ToString(), out building.health);
+                    _ = DateTime.TryParse(reader["construction_time"].ToString(), out building.constructionTime);
+                    _ = float.TryParse(reader["blind_radius"].ToString(), out building.blindRange);
+                    _ = float.TryParse(reader["splash_radius"].ToString(), out building.splashRange);
+                    _ = float.TryParse(reader["projectile_speed"].ToString(), out building.rangedSpeed);
+                    string tt = reader["target_type"].ToString();
+                    if (!string.IsNullOrEmpty(tt))
+                    {
+                        building.targetType = (BuildingTargetType)Enum.Parse(typeof(BuildingTargetType), tt);
                     }
+                    _ = int.TryParse(reader["is_constructing"].ToString(), out int isConstructing);
+                    building.isConstructing = isConstructing > 0;
+                    _ = int.TryParse(reader["construction_build_time"].ToString(), out building.buildTime);
+                    data.Add(building);
                 }
             }
+            connection.Close();
             return data;
         }
 

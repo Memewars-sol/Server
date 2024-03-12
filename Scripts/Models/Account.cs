@@ -8,6 +8,17 @@ using WebUtils;
 
 namespace Models {
 
+        public class InitializationData
+        {
+            public long accountID = 0;
+            public string password = "";
+            public string[] versions;
+            public List<ServerBuilding> serverBuildings = new List<ServerBuilding>();
+            public List<ServerUnit> serverUnits = new List<ServerUnit>();
+            public List<ServerSpell> serverSpells = new List<ServerSpell>();
+            public List<Research> research = new List<Research>();
+        }
+
         public class Player
         {
             public long id = 0;
@@ -260,6 +271,46 @@ namespace Models {
             connection.Close();
             return Id;
         }
+
+        public static async Task<InitializationData> GetInitializationData(int id, string address) {
+            InitializationData initializationData = new();
+            string query = string.Format("SELECT id, password, is_online, client_id FROM accounts WHERE address = '{0}'", address);
+            using NpgsqlConnection connection = Database.GetDbConnection();
+            using NpgsqlCommand command = new(query, connection);
+            using NpgsqlDataReader reader = command.ExecuteReader();
+            if (reader.HasRows)
+            {
+                while (reader.Read())
+                {
+                    bool online = int.Parse(reader["is_online"].ToString()) > 0;
+                    int online_id = int.Parse(reader["client_id"].ToString());
+                    long _id = long.Parse(reader["id"].ToString());
+                    if (online && Server.clients[online_id].account == _id)
+                    {
+                        Server.clients[online_id].Disconnect();
+                    }
+                    initializationData.accountID = _id;
+                    initializationData.password = ""; // dont have password
+                    break;
+                }
+            }
+
+            // dont have account so we initialize
+            if (initializationData.accountID == 0)
+            {
+                initializationData.accountID = await new Account{ Address = address }.Create();
+            }
+            
+            // set account as online
+            LogIn(id, initializationData.accountID);
+
+            initializationData.serverUnits = Unit.GetServerUnits();
+            initializationData.serverSpells = Spell.GetServerSpells();
+            initializationData.serverBuildings = Building.GetServerBuildings();
+            initializationData.research = Research.GetResearchList(initializationData.accountID);
+            connection.Close();
+            return initializationData;
+        }
     
         public static Player Get(long id) {
             string query = string.Format(@"
@@ -290,7 +341,7 @@ namespace Models {
                 on guilds.id = accounts.guild_id
                 WHERE accounts.id = {0};", id);
                 
-            Player data = new Player();
+            Player data = new();
             using NpgsqlConnection connection = Database.GetDbConnection();
             using NpgsqlCommand command = new(query, connection);
             using NpgsqlDataReader reader = command.ExecuteReader();
@@ -322,7 +373,26 @@ namespace Models {
                     data.guild_name = string.IsNullOrEmpty(reader["guild_name"].ToString())? "" : (string) reader["guild_name"];
                 }
             }
+            connection.Close();
             return data;
+        }
+    
+        public static void LogIn(long id, long account_id) {
+            string query = string.Format(@"UPDATE accounts SET is_online = 1, client_id = {0}, last_login = NOW() at time zone 'utc' WHERE id = {1};", id, account_id);
+            using NpgsqlConnection connection = Database.GetDbConnection();
+            using NpgsqlCommand command = new(query, connection);
+            command.ExecuteNonQuery();
+            connection.Close();
+            return;
+        }
+    
+        public static void LogOut(string address) {
+            string query = string.Format(@"UPDATE accounts SET is_online = 0 WHERE address = '{0}';", address);
+            using NpgsqlConnection connection = Database.GetDbConnection();
+            using NpgsqlCommand command = new(query, connection);
+            command.ExecuteNonQuery();
+            connection.Close();
+            return;
         }
     }
 }
