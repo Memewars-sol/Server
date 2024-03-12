@@ -205,6 +205,7 @@ namespace Memewars.RealtimeNetworking.Server
             Sender.TCP_Send(id, packet);
         }
 
+        // todo
         public async static void BuyResources(int id, int pack)
         {
             long account_id = Server.clients[id].account;
@@ -337,6 +338,7 @@ namespace Memewars.RealtimeNetworking.Server
 
         #region Collect Resources
 
+        // todo
         public async static void UpdateCollectabes(double deltaTime)
         {
             await UpdateCollectabesAsync(deltaTime);
@@ -426,85 +428,21 @@ namespace Memewars.RealtimeNetworking.Server
             return true;
         }
 
-        public async static void Collect(int id, long database_id)
+        public static void Collect(int id, long database_id)
         {
             long account_id = Server.clients[id].account;
             Packet packet = new Packet();
             packet.Write((int)Terminal.RequestsID.COLLECT);
-            int amount = await CollectAsync(account_id, database_id);
+            int amount = Account.CollectResources(account_id, database_id);
             packet.Write(database_id);
             packet.Write(amount);
             Sender.TCP_Send(id, packet);
         }
 
-        private async static Task<int> CollectAsync(long account_id, long database_id)
-        {
-            Task<int> task = Task.Run(() =>
-            {
-                return Retry.Do(() => _CollectAsync(account_id, database_id), TimeSpan.FromSeconds(0.1), 1, false);
-            });
-            return await task;
-        }
-
-        private static int _CollectAsync(long account_id, long database_id)
-        {
-            int amount = 0;
-            using (NpgsqlConnection connection = GetDbConnection())
-            {
-                int amountGold = 0;
-                int amountElixir = 0;
-                int amountDark = 0;
-                string query = String.Format("SELECT global_id, gold_storage, elixir_storage, dark_elixir_storage FROM buildings WHERE id = {0} AND account_id = {1};", database_id, account_id);
-                using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                {
-                    using (NpgsqlDataReader reader = command.ExecuteReader())
-                    {
-                        if (reader.HasRows)
-                        {
-                            while (reader.Read())
-                            {
-                                BuildingID global_id = (BuildingID)Enum.Parse(typeof(BuildingID), reader["global_id"].ToString());
-                                switch (global_id)
-                                {
-                                    case BuildingID.goldmine:
-                                        amountGold = (int)Math.Floor(float.Parse(reader["gold_storage"].ToString()));
-                                        break;
-                                    case BuildingID.elixirmine:
-                                        amountElixir = (int)Math.Floor(float.Parse(reader["elixir_storage"].ToString()));
-                                        break;
-                                    case BuildingID.darkelixirmine:
-                                        amountDark = (int)Math.Floor(float.Parse(reader["dark_elixir_storage"].ToString()));
-                                        break;
-                                }
-                            }
-                        }
-                    }
-                }
-                if (amountGold > 0)
-                {
-                    Account.AddResources(account_id, amountGold, 0, 0, 0);
-                    query = String.Format("UPDATE buildings SET gold_storage = gold_storage - {0} WHERE id = {1};", amountGold, database_id);
-                    using (NpgsqlCommand command = new NpgsqlCommand(query, connection)) { command.ExecuteNonQuery(); }
-                }
-                else if (amountElixir > 0)
-                {
-                    Account.AddResources(account_id, 0, amountElixir, 0, 0);
-                    query = String.Format("UPDATE buildings SET elixir_storage = elixir_storage - {0} WHERE id = {1};", amountElixir, database_id);
-                    using (NpgsqlCommand command = new NpgsqlCommand(query, connection)) { command.ExecuteNonQuery(); }
-                }
-                else if (amountDark > 0)
-                {
-                    Account.AddResources(account_id, 0, 0, amountDark, 0);
-                    query = String.Format("UPDATE buildings SET dark_elixir_storage = dark_elixir_storage - {0} WHERE id = {1};", amountDark, database_id);
-                    using (NpgsqlCommand command = new NpgsqlCommand(query, connection)) { command.ExecuteNonQuery(); }
-                }
-                connection.Close();
-            }
-            return amount;
-        }
 
         #endregion
 
+        // not updating this region first
         #region General Update
 
         public async static void GeneralUpdate(double deltaTime)

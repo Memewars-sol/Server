@@ -449,8 +449,12 @@ namespace Models {
                 FROM buildings 
                 JOIN accounts
                 ON accounts.id = buildings.account_id
+                LEFT JOIN server_buildings 
+                ON buildings.global_id = server_buildings.global_id 
+                AND buildings.level = server_buildings.level 
                 WHERE 
-                    account_id = {0};", account_id);
+                    account_id = {0}
+                    AND (buildings.global_id ilike '%storage' OR buildings.global_id = 'townhall') -- make sure is a storage", account_id);
             using NpgsqlCommand command = new(query, connection);
             using NpgsqlDataReader reader = command.ExecuteReader();
             if (reader.HasRows)
@@ -486,14 +490,18 @@ namespace Models {
             List<Building> buildings = new();
             string query = string.Format(@"
                 SELECT 
-                    id, 
-                    global_id, 
+                    buildings.id, 
+                    buildings.global_id, 
                     gold_storage, 
                     elixir_storage, 
                     dark_elixir_storage 
                 FROM buildings 
+                LEFT JOIN server_buildings 
+                ON buildings.global_id = server_buildings.global_id 
+                AND buildings.level = server_buildings.level 
                 WHERE account_id = {0} 
                     AND (gold_storage > 0 OR elixir_storage > 0 OR dark_elixir_storage > 0)
+                    AND (buildings.global_id ilike '%storage' OR buildings.global_id = 'townhall') -- make sure is a storage
                 ORDER BY id;", account_id);
             using NpgsqlCommand command = new(query, connection);
             using NpgsqlDataReader reader = command.ExecuteReader();
@@ -588,7 +596,7 @@ namespace Models {
                     ON buildings.global_id = server_buildings.global_id 
                     AND buildings.level = server_buildings.level 
                     WHERE buildings.account_id = {0} 
-                    AND (gold_capacity > 0 OR elixir_capacity > 0 OR dark_elixir_capacity > 0)
+                    AND (buildings.global_id ilike '%storage' OR buildings.global_id = 'townhall') -- make sure is a storage
                     AND buildings.level > 0;", account_id);
                 using NpgsqlCommand command = new(query, connection);
                 using NpgsqlDataReader reader = command.ExecuteReader();
@@ -646,6 +654,77 @@ namespace Models {
 
             connection.Close();
             return;
+        }
+
+        public static void AddGold(long account_id, int amount) {
+            AddResources(account_id, amount, 0, 0, 0);
+        }
+        public static void AddElixir(long account_id, int amount) {
+            AddResources(account_id, 0, amount, 0, 0);
+        }
+        public static void AddDarkElixir(long account_id, int amount) {
+            AddResources(account_id, 0, 0, amount, 0);
+        }
+        public static void AddGem(long account_id, int amount) {
+            AddResources(account_id, 0, 0, 0, amount);
+        }
+        public static int CollectResources(long account_id, long database_id)
+        {
+            int amount = 0;
+            int amountGold = 0;
+            int amountElixir = 0;
+            int amountDark = 0;
+
+            string query = string.Format(@"
+                SELECT 
+                    global_id, 
+                    gold_storage, 
+                    elixir_storage, 
+                    dark_elixir_storage 
+                FROM 
+                    buildings 
+                WHERE id = {0} 
+                    AND account_id = {1}", database_id, account_id);
+            using NpgsqlConnection connection = Database.GetDbConnection();
+            using (NpgsqlCommand command = new(query, connection))
+            {
+                using NpgsqlDataReader reader = command.ExecuteReader();
+                if (reader.HasRows)
+                {
+                    while (reader.Read())
+                    {
+                        amountGold = (int)Math.Floor(float.Parse(reader["gold_storage"].ToString()));
+                        amountElixir = (int)Math.Floor(float.Parse(reader["elixir_storage"].ToString()));
+                        amountDark = (int)Math.Floor(float.Parse(reader["dark_elixir_storage"].ToString()));
+                    }
+                }
+            }
+            if (amountGold > 0)
+            {
+                AddGold(account_id, amountGold);
+                // reset current mined amount
+                query = String.Format("UPDATE buildings SET gold_storage = gold_storage - {0} WHERE id = {1};", amountGold, database_id);
+                using NpgsqlCommand command = new(query, connection);
+                command.ExecuteNonQuery();
+            }
+            if (amountElixir > 0)
+            {
+                AddElixir(account_id, amountElixir);
+                // reset current mined amount
+                query = String.Format("UPDATE buildings SET elixir_storage = elixir_storage - {0} WHERE id = {1};", amountElixir, database_id);
+                using NpgsqlCommand command = new(query, connection);
+                command.ExecuteNonQuery();
+            }
+            if (amountDark > 0)
+            {
+                AddDarkElixir(account_id, amountDark);
+                // reset current mined amount
+                query = String.Format("UPDATE buildings SET dark_elixir_storage = dark_elixir_storage - {0} WHERE id = {1};", amountDark, database_id);
+                using NpgsqlCommand command = new(query, connection);
+                command.ExecuteNonQuery();
+            }
+            connection.Close();
+            return amount;
         }
 
         public static void AddXP(long account_id, int xp)
@@ -805,12 +884,11 @@ namespace Models {
             {
                 command.ExecuteNonQuery();
             }
-            
+
             response = 1;
             connection.Close();
             return response;
         }
-
 
         public static int GetRank(long account_id)
         {
