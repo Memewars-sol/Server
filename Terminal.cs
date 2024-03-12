@@ -284,7 +284,7 @@ namespace Memewars.RealtimeNetworking.Server
                         break;
                     case RequestsID.BOOST:
                         databaseID = packet.ReadLong();
-                        Database.BoostResource(clientID, databaseID);
+                        Database.BoostResources(clientID, databaseID);
                         break;
                     case RequestsID.BUYRESOURCE:
                         int resPack = packet.ReadInt();

@@ -195,73 +195,14 @@ namespace Memewars.RealtimeNetworking.Server
 
         #region Resource Manager
 
-        public async static void BoostResource(int id, long building_id)
+        public static void BoostResources(int id, long building_id)
         {
             long account_id = Server.clients[id].account;
-            int res = await BoostResourceAsync(account_id, building_id);
+            int res = Account.BoostResources(account_id, building_id);
             Packet packet = new Packet();
             packet.Write((int)Terminal.RequestsID.BOOST);
             packet.Write(res);
             Sender.TCP_Send(id, packet);
-        }
-
-        private async static Task<int> BoostResourceAsync(long account_id, long building_id)
-        {
-            Task<int> task = Task.Run(() =>
-            {
-                return Retry.Do(() => _BoostResourceAsync(account_id, building_id), TimeSpan.FromSeconds(0.1), 1, false);
-            });
-            return await task;
-        }
-
-        private static int _BoostResourceAsync(long account_id, long building_id)
-        {
-            int response = 0;
-            using (NpgsqlConnection connection = GetDbConnection())
-            {
-                Building building = null;
-                DateTime now = DateTime.Now;
-                string query = String.Format("SELECT level, global_id, boost, NOW() at time zone 'utc' as now FROM buildings WHERE id = {0} AND account_id = {1};", building_id, account_id);
-                using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                {
-                    using (NpgsqlDataReader reader = command.ExecuteReader())
-                    {
-                        if (reader.HasRows)
-                        {
-                            building = new Building();
-                            while (reader.Read())
-                            {
-                                DateTime.TryParse(reader["now"].ToString(), out now);
-                                DateTime.TryParse(reader["boost"].ToString(), out building.boost);
-                                building.id = (BuildingID)Enum.Parse(typeof(BuildingID), reader["global_id"].ToString());
-                                int.TryParse(reader["level"].ToString(), out building.level);
-                            }
-                        }
-                    }
-                }
-                if(building != null)
-                {
-                    int cost = Data.GetBoostResourcesCost(building.id, building.level);
-                    if (Account.SpendResources(account_id, 0, 0, cost, 0))
-                    {
-                        if(building.boost >= now)
-                        {
-                            query = String.Format("UPDATE buildings SET boost = boost + INTERVAL '24 HOUR' WHERE id = {0}", building_id);
-                        }
-                        else
-                        {
-                            query = String.Format("UPDATE buildings SET boost = NOW() at time zone 'utc' + INTERVAL '24 HOUR' WHERE id = {0}", building_id);
-                        }
-                        using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                        {
-                            command.ExecuteNonQuery();
-                        }
-                        response = 1;
-                    }
-                }
-                connection.Close();
-            }
-            return response;
         }
 
         public async static void BuyResources(int id, int pack)

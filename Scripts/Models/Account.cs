@@ -762,6 +762,55 @@ namespace Models {
             command.ExecuteNonQuery();
             return true;
         }
+        public static int BoostResources(long account_id, long building_id)
+        {
+            int response = 0;
+            using NpgsqlConnection connection = Database.GetDbConnection();
+            Building building = null;
+            DateTime now = DateTime.Now;
+            string query = String.Format("SELECT level, global_id, boost, NOW() at time zone 'utc' as now FROM buildings WHERE id = {0} AND account_id = {1};", building_id, account_id);
+            using (NpgsqlCommand command = new(query, connection))
+            {
+                using NpgsqlDataReader reader = command.ExecuteReader();
+                if (reader.HasRows)
+                {
+                    building = new Building();
+                    while (reader.Read())
+                    {
+                        _ = DateTime.TryParse(reader["now"].ToString(), out now);
+                        _ = DateTime.TryParse(reader["boost"].ToString(), out building.boost);
+                        building.id = (BuildingID)Enum.Parse(typeof(BuildingID), reader["global_id"].ToString());
+                        _ = int.TryParse(reader["level"].ToString(), out building.level);
+                    }
+                }
+            }
+
+            if(building == null) {
+                connection.Close();
+                return response;
+            }
+
+            int cost = Data.GetBoostResourcesCost(building.id, building.level);
+            if (!SpendResources(account_id, 0, 0, cost, 0))
+            {
+                connection.Close();
+                return response;
+            }
+
+            query = building.boost >= now?
+                    string.Format("UPDATE buildings SET boost = boost + INTERVAL '24 HOUR' WHERE id = {0}", building_id)
+                    : string.Format("UPDATE buildings SET boost = NOW() at time zone 'utc' + INTERVAL '24 HOUR' WHERE id = {0}", building_id);
+            
+            using (NpgsqlCommand command = new(query, connection))
+            {
+                command.ExecuteNonQuery();
+            }
+            
+            response = 1;
+            connection.Close();
+            return response;
+        }
+
 
         public static int GetRank(long account_id)
         {
