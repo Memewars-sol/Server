@@ -195,26 +195,6 @@ namespace Memewars.RealtimeNetworking.Server
 
         #region Helpers
 
-        private static int GetBuildingCount(long accountID, string globalID, NpgsqlConnection connection)
-        {
-            int count = 0;
-            string query = String.Format("SELECT id FROM buildings WHERE account_id = {0} AND global_id = '{1}';", accountID, globalID);
-            using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-            {
-                using (NpgsqlDataReader reader = command.ExecuteReader())
-                {
-                    if (reader.HasRows)
-                    {
-                        while (reader.Read())
-                        {
-                            count++;
-                        }
-                    }
-                }
-            }
-            return count;
-        }
-
         private static int GetBuildingConstructionCount(long accountID, NpgsqlConnection connection)
         {
             int count = 0;
@@ -2061,7 +2041,7 @@ namespace Memewars.RealtimeNetworking.Server
                         if (building.id == "buildershut")
                         {
                             // todo
-                            int c = GetBuildingCount(account_id, "buildershut", connection);
+                            int c = Account.GetBuildingCount(account_id, "buildershut");
                             switch (c)
                             {
                                 case 0: building.requiredGems = 0; break;
@@ -2091,7 +2071,7 @@ namespace Memewars.RealtimeNetworking.Server
                         }
                         if (haveBuilding)
                         {
-                            int buildersCount = GetBuildingCount(account_id, "buildershut", connection);
+                            int buildersCount = Account.GetBuildingCount(account_id, "buildershut");
                             int constructingCount = GetBuildingConstructionCount(account_id, connection);
                             if (time > 0 && buildersCount <= constructingCount)
                             {
@@ -2108,7 +2088,7 @@ namespace Memewars.RealtimeNetworking.Server
                                 else
                                 {
                                     BuildingCount limits = Data.GetBuildingLimits(townHall.level, building.id);
-                                    int haveCount = GetBuildingCount(account_id, building.id, connection);
+                                    int haveCount = Account.GetBuildingCount(account_id, building.id);
                                     if (limits == null || haveCount >= limits.count)
                                     {
                                         limited = true;
@@ -2363,7 +2343,7 @@ namespace Memewars.RealtimeNetworking.Server
 
                 if (haveLevel)
                 {
-                    int buildersCount = GetBuildingCount(account_id, "buildershut", connection);
+                    int buildersCount = Account.GetBuildingCount(account_id, "buildershut");
                     int constructingCount = GetBuildingConstructionCount(account_id, connection);
                     if (time > 0 && buildersCount <= constructingCount)
                     {
@@ -2382,7 +2362,7 @@ namespace Memewars.RealtimeNetworking.Server
                             else
                             {
                                 BuildingCount limits = Data.GetBuildingLimits(townHall.level, globalID);
-                                int haveCount = GetBuildingCount(account_id, globalID, connection);
+                                int haveCount = Account.GetBuildingCount(account_id, globalID);
                                 if (haveCount >= limits.count && level >= limits.maxLevel)
                                 {
                                     limited = true;

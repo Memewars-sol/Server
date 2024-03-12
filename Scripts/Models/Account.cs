@@ -396,6 +396,22 @@ namespace Models {
             return data;
         }
     
+        public static int GetBuildingCount(long accountId, string globalId) {
+            int count = 0;
+            string query = string.Format("SELECT count(id) as building_count FROM buildings WHERE account_id = {0} AND global_id = '{1}';", accountId, globalId);
+            using NpgsqlConnection connection = Database.GetDbConnection();
+            using NpgsqlCommand command = new NpgsqlCommand(query, connection);
+            using NpgsqlDataReader reader = command.ExecuteReader();
+            if (reader.HasRows)
+            {
+                while (reader.Read())
+                {
+                    _ = int.TryParse(reader["building_count"].ToString(), out count);
+                }
+            }
+            return count;
+        }
+        
         public static void LogIn(long id, long account_id) {
             string query = string.Format(@"UPDATE accounts SET is_online = 1, client_id = {0}, last_login = NOW() at time zone 'utc' WHERE id = {1};", id, account_id);
             using NpgsqlConnection connection = Database.GetDbConnection();
@@ -439,7 +455,7 @@ namespace Models {
             return response;
         }
     
-
+    
         public static int GetRank(long account_id)
         {
             using NpgsqlConnection connection = Database.GetDbConnection();
