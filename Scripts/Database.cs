@@ -195,237 +195,6 @@ namespace Memewars.RealtimeNetworking.Server
 
         #region Resource Manager
 
-        private static bool SpendResources(NpgsqlConnection connection, long account_id, int gold, int elixir, int gems, int darkElixir)
-        {
-            if (CheckResources(connection, account_id, gold, elixir, gems, darkElixir))
-            {
-                if (gold > 0 || elixir > 0 || darkElixir > 0)
-                {
-                    List<Building> buildings = new List<Building>();
-                    string query = String.Format("SELECT id, global_id, gold_storage, elixir_storage, dark_elixir_storage FROM buildings WHERE account_id = {0} AND global_id IN('townhall', 'goldstorage', 'elixirstorage', 'darkelixirstorage');", account_id);
-                    using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                    {
-                        using (NpgsqlDataReader reader = command.ExecuteReader())
-                        {
-                            if (reader.HasRows)
-                            {
-                                while (reader.Read())
-                                {
-                                    Building building = new Building();
-                                    building.id = (BuildingID)Enum.Parse(typeof(BuildingID), reader["global_id"].ToString());
-                                    building.goldStorage = (int)Math.Floor(float.Parse(reader["gold_storage"].ToString()));
-                                    building.elixirStorage = (int)Math.Floor(float.Parse(reader["elixir_storage"].ToString()));
-                                    building.darkStorage = (int)Math.Floor(float.Parse(reader["dark_elixir_storage"].ToString()));
-                                    building.databaseID = long.Parse(reader["id"].ToString());
-                                    buildings.Add(building);
-                                }
-                            }
-                        }
-                    }
-                    if (buildings.Count > 0)
-                    {
-                        int spendGold = 0;
-                        int spendElixir = 0;
-                        int spendDarkElixir = 0;
-                        for (int i = 0; i < buildings.Count; i++)
-                        {
-                            if (spendGold >= gold && spendElixir >= elixir && spendDarkElixir >= darkElixir)
-                            {
-                                break;
-                            }
-                            int toSpendGold = 0;
-                            int toSpendElixir = 0;
-                            int toSpendDark = 0;
-                            switch (buildings[i].id)
-                            {
-                                case BuildingID.townhall:
-                                    if (spendGold < gold)
-                                    {
-                                        if (buildings[i].goldStorage >= (gold - spendGold))
-                                        {
-                                            toSpendGold = gold - spendGold;
-                                        }
-                                        else
-                                        {
-                                            toSpendGold = buildings[i].goldStorage;
-                                        }
-                                        spendGold += toSpendGold;
-                                    }
-                                    if (spendElixir < elixir)
-                                    {
-                                        if (buildings[i].elixirStorage >= (elixir - spendElixir))
-                                        {
-                                            toSpendElixir = elixir - spendElixir;
-                                        }
-                                        else
-                                        {
-                                            toSpendElixir = buildings[i].elixirStorage;
-                                        }
-                                        spendElixir += toSpendElixir;
-                                    }
-                                    if (spendDarkElixir < darkElixir)
-                                    {
-                                        if (buildings[i].darkStorage >= (darkElixir - spendDarkElixir))
-                                        {
-                                            toSpendDark = darkElixir - spendDarkElixir;
-                                        }
-                                        else
-                                        {
-                                            toSpendDark = buildings[i].darkStorage;
-                                        }
-                                        spendDarkElixir += toSpendDark;
-                                    }
-                                    break;
-                                case BuildingID.goldstorage:
-                                    if (spendGold < gold)
-                                    {
-                                        if (buildings[i].goldStorage >= (gold - spendGold))
-                                        {
-                                            toSpendGold = gold - spendGold;
-                                        }
-                                        else
-                                        {
-                                            toSpendGold = buildings[i].goldStorage;
-                                        }
-                                        spendGold += toSpendGold;
-                                    }
-                                    break;
-                                case BuildingID.elixirstorage:
-                                    if (spendElixir < elixir)
-                                    {
-                                        if (buildings[i].elixirStorage >= (elixir - spendElixir))
-                                        {
-                                            toSpendElixir = elixir - spendElixir;
-                                        }
-                                        else
-                                        {
-                                            toSpendElixir = buildings[i].elixirStorage;
-                                        }
-                                        spendElixir += toSpendElixir;
-                                    }
-                                    break;
-                                case BuildingID.darkelixirstorage:
-                                    if (spendDarkElixir < darkElixir)
-                                    {
-                                        if (buildings[i].darkStorage >= (darkElixir - spendDarkElixir))
-                                        {
-                                            toSpendDark = darkElixir - spendDarkElixir;
-                                        }
-                                        else
-                                        {
-                                            toSpendDark = buildings[i].darkStorage;
-                                        }
-                                        spendDarkElixir += toSpendDark;
-                                    }
-                                    break;
-                            }
-                            query = String.Format("UPDATE buildings SET gold_storage = gold_storage - {0}, elixir_storage = elixir_storage - {1}, dark_elixir_storage = dark_elixir_storage - {2} WHERE id = {3};", toSpendGold, toSpendElixir, toSpendDark, buildings[i].databaseID);
-                            using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                            {
-                                command.ExecuteNonQuery();
-                            }
-                        }
-                        if (spendGold < gold || spendElixir < elixir || spendDarkElixir < darkElixir)
-                        {
-                            return false;
-                        }
-                    }
-                    else
-                    {
-                        return false;
-                    }
-                }
-
-                if (gems > 0)
-                {
-                    string query = String.Format("UPDATE accounts SET gems = gems - {0} WHERE id = {1};", gems, account_id);
-                    using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                    {
-                        command.ExecuteNonQuery();
-                    }
-                }
-            }
-            else
-            {
-                return false;
-            }
-            return true;
-        }
-
-        private static bool CheckResources(NpgsqlConnection connection, long account_id, int gold, int elixir, int gems, int darkElixir)
-        {
-            int haveGold = 0;
-            int haveElixir = 0;
-            int haveGems = 0;
-            int haveDarkElixir = 0;
-
-            if (gold > 0 || elixir > 0 || darkElixir > 0)
-            {
-                string query = String.Format("SELECT global_id, gold_storage, elixir_storage, dark_elixir_storage FROM buildings WHERE account_id = {0} AND global_id IN('townhall', 'goldstorage', 'elixirstorage', 'darkelixirstorage');", account_id);
-                using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                {
-                    using (NpgsqlDataReader reader = command.ExecuteReader())
-                    {
-                        if (reader.HasRows)
-                        {
-                            while (reader.Read())
-                            {
-                                BuildingID id = (BuildingID)Enum.Parse(typeof(BuildingID), reader["global_id"].ToString());
-                                int gold_storage = (int)Math.Floor(float.Parse(reader["gold_storage"].ToString()));
-                                int elixir_storage = (int)Math.Floor(float.Parse(reader["elixir_storage"].ToString()));
-                                int dark_elixir_storage = (int)Math.Floor(float.Parse(reader["dark_elixir_storage"].ToString()));
-                                switch (id)
-                                {
-                                    case BuildingID.townhall:
-                                        haveGold += gold_storage;
-                                        haveElixir += elixir_storage;
-                                        haveDarkElixir += dark_elixir_storage;
-                                        break;
-                                    case BuildingID.goldstorage:
-                                        haveGold += gold_storage;
-                                        break;
-                                    case BuildingID.elixirstorage:
-                                        haveElixir += elixir_storage;
-                                        break;
-                                    case BuildingID.darkelixirstorage:
-                                        haveDarkElixir += dark_elixir_storage;
-                                        break;
-                                }
-                            }
-                        }
-                    }
-                }
-                if (haveGold < gold || haveElixir < elixir || haveDarkElixir < darkElixir)
-                {
-                    return false;
-                }
-            }
-
-            if (gems > 0)
-            {
-                string query = String.Format("SELECT gems FROM accounts WHERE id = {0}", account_id);
-                using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                {
-                    using (NpgsqlDataReader reader = command.ExecuteReader())
-                    {
-                        if (reader.HasRows)
-                        {
-                            while (reader.Read())
-                            {
-                                haveGems = int.Parse(reader["gems"].ToString());
-                            }
-                        }
-                    }
-                }
-                if (haveGems < gems)
-                {
-                    return false;
-                }
-            }
-
-            return true;
-        }
-
         private static (int, int, int, int) AddResources(NpgsqlConnection connection, long account_id, int gold, int elixir, int darkElixir, int gems)
         {
             int addedGold = 0;
@@ -738,7 +507,7 @@ namespace Memewars.RealtimeNetworking.Server
                 if(building != null)
                 {
                     int cost = Data.GetBoostResourcesCost(building.id, building.level);
-                    if (SpendResources(connection, account_id, 0, 0, cost, 0))
+                    if (Account.SpendResources(account_id, 0, 0, cost, 0))
                     {
                         if(building.boost >= now)
                         {
@@ -878,7 +647,7 @@ namespace Memewars.RealtimeNetworking.Server
                 if (tatgetDark < 0) { tatgetDark = 0; }
 
                 int cost = Data.GetResourceGemCost(tatgetGold, tatgetElixir, tatgetDark);
-                if(SpendResources(connection, account_id, 0, 0, cost, 0))
+                if(Account.SpendResources(account_id, 0, 0, cost, 0))
                 {
                     var add = AddResources(connection, account_id, tatgetGold, tatgetElixir, tatgetDark, 0);
                     response = 1;
@@ -1543,7 +1312,7 @@ namespace Memewars.RealtimeNetworking.Server
 
                     if (trophies > 0)
                     {
-                        SpendResources(connection, defender_id, lootedGold, lootedElixir, 0, lootedDark);
+                        Account.SpendResources(defender_id, lootedGold, lootedElixir, 0, lootedDark);
                         AddResources(connection, attacker_id, lootedGold, lootedElixir, lootedDark, 0);
                     }
 
@@ -2076,7 +1845,7 @@ namespace Memewars.RealtimeNetworking.Server
                                 }
                                 else
                                 {
-                                    if (SpendResources(connection, account_id, building.requiredGold, building.requiredElixir, building.requiredGems, building.requiredDarkElixir))
+                                    if (Account.SpendResources(account_id, building.requiredGold, building.requiredElixir, building.requiredGems, building.requiredDarkElixir))
                                     {
                                         if (time > 0)
                                         {
@@ -2351,7 +2120,7 @@ namespace Memewars.RealtimeNetworking.Server
                         }
                         else
                         {
-                            if (SpendResources(connection, account_id, reqGold, reqElixir, reqGems, reqDarkElixir))
+                            if (Account.SpendResources(account_id, reqGold, reqElixir, reqGems, reqDarkElixir))
                             {
                                 query = String.Format("UPDATE buildings SET is_constructing = 1, construction_time =  NOW() at time zone 'utc' + INTERVAL '{0} SECOND', construction_build_time = {1} WHERE id = {2};", time, time, buildingID);
                                 using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
@@ -2431,7 +2200,7 @@ namespace Memewars.RealtimeNetworking.Server
                 if (time > 0)
                 {
                     int requiredGems = Data.GetInstantBuildRequiredGems(time);
-                    if (SpendResources(connection, account_id, 0, 0, requiredGems, 0))
+                    if (Account.SpendResources(account_id, 0, 0, requiredGems, 0))
                     {
                         query = String.Format("UPDATE buildings SET construction_time = NOW() at time zone 'utc' WHERE id = {0}", buildingID);
                         using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
@@ -2583,7 +2352,7 @@ namespace Memewars.RealtimeNetworking.Server
 
                     if (capacity - occupied >= unit.housing)
                     {
-                        if (SpendResources(connection, account_id, unit.requiredGold, unit.requiredElixir, unit.requiredGems, unit.requiredDarkElixir))
+                        if (Account.SpendResources(account_id, unit.requiredGold, unit.requiredElixir, unit.requiredGems, unit.requiredDarkElixir))
                         {
                             query = String.Format("INSERT INTO units (global_id, level, account_id) VALUES('{0}', {1}, {2})", globalID, level, account_id);
                             using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
@@ -2800,7 +2569,7 @@ namespace Memewars.RealtimeNetworking.Server
                             }
                         }
                     }
-                    if (SpendResources(connection, account_id, Data.GetBattleSearchCost(townHallLevel), 0, 0, 0) == false)
+                    if (Account.SpendResources(account_id, Data.GetBattleSearchCost(townHallLevel), 0, 0, 0) == false)
                     {
                         id = 0;
                     }
@@ -3783,7 +3552,7 @@ namespace Memewars.RealtimeNetworking.Server
 
                     if (capacity - occupied >= spell.housing)
                     {
-                        if (SpendResources(connection, account_id, spell.requiredGold, spell.requiredElixir, spell.requiredGems, spell.requiredDarkElixir))
+                        if (Account.SpendResources(account_id, spell.requiredGold, spell.requiredElixir, spell.requiredGems, spell.requiredDarkElixir))
                         {
                             query = String.Format("INSERT INTO spells (global_id, level, account_id) VALUES('{0}', {1}, {2})", globalID, level, account_id);
                             using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
@@ -4075,7 +3844,7 @@ namespace Memewars.RealtimeNetworking.Server
                         ServerUnit unit = Unit.GetServerUnit(global_id, research.level + 1);
                         if (unit != null)
                         {
-                            if (SpendResources(connection, account_id, unit.researchGold, unit.researchElixir, unit.researchGems, unit.researchDarkElixir))
+                            if (Account.SpendResources(account_id, unit.researchGold, unit.researchElixir, unit.researchGems, unit.researchDarkElixir))
                             {
                                 time = unit.researchTime;
                                 AddXP(connection, account_id, unit.researchXp);
@@ -4092,7 +3861,7 @@ namespace Memewars.RealtimeNetworking.Server
                         ServerSpell spell = GetServerSpell(connection, global_id, research.level + 1);
                         if (spell != null)
                         {
-                            if (SpendResources(connection, account_id, spell.researchGold, spell.researchElixir, spell.researchGems, spell.researchDarkElixir))
+                            if (Account.SpendResources(account_id, spell.researchGold, spell.researchElixir, spell.researchGems, spell.researchDarkElixir))
                             {
                                 time = spell.researchTime;
                                 AddXP(connection, account_id, spell.researchXp);

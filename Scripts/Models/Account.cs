@@ -429,6 +429,139 @@ namespace Models {
 
         }
 
+        public static bool CheckResources(long account_id, int gold, int elixir, int gems, int darkElixir) {
+            using NpgsqlConnection connection = Database.GetDbConnection();
+            float haveGold = 0;
+            float haveElixir = 0;
+            float haveGems = 0;
+            float haveDarkElixir = 0;
+
+            if(gold == 0 && elixir == 0 && darkElixir == 0) {
+                return true;
+            }
+
+            string query = string.Format(@"
+                SELECT 
+                    max(gems) as total_gems,
+                    sum(gold_storage) as total_gold, 
+                    sum(elixir_storage) as total_elixir, 
+                    sum(dark_elixir_storage) as total_dark_elixir 
+                FROM buildings 
+                JOIN accounts
+                ON accounts.id = buildings.account_id
+                WHERE 
+                    account_id = {0};", account_id);
+            using NpgsqlCommand command = new(query, connection);
+            using NpgsqlDataReader reader = command.ExecuteReader();
+            if (reader.HasRows)
+            {
+                while (reader.Read())
+                {
+                    _ = float.TryParse(reader["total_gems"].ToString(), out haveGems);
+                    _ = float.TryParse(reader["total_gold"].ToString(), out haveGold);
+                    _ = float.TryParse(reader["total_elixir"].ToString(), out haveElixir);
+                    _ = float.TryParse(reader["total_dark_elixir"].ToString(), out haveDarkElixir);
+                }
+            }
+            
+            if (haveGold < gold || haveElixir < elixir || haveDarkElixir < darkElixir || haveGems < gems)
+            {
+                return false;
+            }
+
+            connection.Close();
+            return true;
+        }
+        public static bool SpendResources(long account_id, int gold, int elixir, int gems, int darkElixir)
+        {
+            if (!CheckResources(account_id, gold, elixir, gems, darkElixir)) {
+                return false;
+            }
+            
+            if (gold == 0 && elixir == 0 && darkElixir == 0) {
+                return false;
+            }
+
+            using NpgsqlConnection connection = Database.GetDbConnection();
+            List<Building> buildings = new();
+            string query = string.Format(@"
+                SELECT 
+                    id, 
+                    global_id, 
+                    gold_storage, 
+                    elixir_storage, 
+                    dark_elixir_storage 
+                FROM buildings 
+                WHERE account_id = {0} 
+                    AND (gold_storage > 0 OR elixir_storage > 0 OR dark_elixir_storage > 0)
+                ORDER BY id;", account_id);
+            using NpgsqlCommand command = new(query, connection);
+            using NpgsqlDataReader reader = command.ExecuteReader();
+            if (reader.HasRows)
+            {
+                while (reader.Read())
+                {
+                    Building building = new()
+                    {
+                        id = (BuildingID)Enum.Parse(typeof(BuildingID), reader["global_id"].ToString()),
+                        goldStorage = (int)Math.Floor(float.Parse(reader["gold_storage"].ToString())),
+                        elixirStorage = (int)Math.Floor(float.Parse(reader["elixir_storage"].ToString())),
+                        darkStorage = (int)Math.Floor(float.Parse(reader["dark_elixir_storage"].ToString())),
+                        databaseID = long.Parse(reader["id"].ToString())
+                    };
+                    buildings.Add(building);
+                }
+            }
+
+            if (buildings.Count == 0) {
+                return false;
+            }
+
+            string spendQuery = "";
+            foreach(var building in buildings) {
+                // already have enough
+                if (gold == 0 && elixir == 0 && darkElixir == 0)
+                {
+                    break;
+                }
+
+                int buildingGoldSpent = building.goldStorage >= gold? gold : building.goldStorage;
+                int buildingElixirSpent = building.elixirStorage >= gold? gold : building.goldStorage;
+                int buildingDarkElixirSpent = building.darkStorage >= gold? gold : building.goldStorage;
+                
+                gold -= buildingGoldSpent;
+                elixir -= buildingElixirSpent;
+                darkElixir -= buildingDarkElixirSpent;
+                
+                spendQuery += string.Format(@"
+                    UPDATE buildings 
+                    SET 
+                        gold_storage = gold_storage - {0}, 
+                        elixir_storage = elixir_storage - {1}, 
+                        dark_elixir_storage = dark_elixir_storage - {2} 
+                    WHERE id = {3};", buildingGoldSpent, buildingElixirSpent, buildingDarkElixirSpent, building.databaseID);
+            }
+
+            // dont have enough resources
+            if(gold > 0 || elixir > 0 || darkElixir > 0) {
+                return false;
+            }
+
+            using NpgsqlCommand updateBuildingCommand = new(query, connection);
+            updateBuildingCommand.ExecuteNonQuery();
+
+            // update gems
+            if (gems > 0)
+            {
+                string updateGemQuery = String.Format("UPDATE accounts SET gems = gems - {0} WHERE id = {1};", gems, account_id);
+                using NpgsqlCommand updateGemCommand = new(query, connection);
+                updateGemCommand.ExecuteNonQuery();
+            }
+
+            connection.Close();
+            return true;
+        }
+
         public static void LogIn(long id, long account_id) {
             string query = string.Format(@"UPDATE accounts SET is_online = 1, client_id = {0}, last_login = NOW() at time zone 'utc' WHERE id = {1};", id, account_id);
             using NpgsqlConnection connection = Database.GetDbConnection();
@@ -471,7 +604,6 @@ namespace Models {
             response = 1;
             return response;
         }
-    
     
         public static int GetRank(long account_id)
         {
