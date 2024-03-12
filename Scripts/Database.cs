@@ -1147,71 +1147,6 @@ namespace Memewars.RealtimeNetworking.Server
 
         #region Buildings
 
-        private async static Task<Building> GetBuildingAsync(long id, long account)
-        {
-            Task<Building> task = Task.Run(() =>
-            {
-                return Retry.Do(() => _GetBuildingAsync(id, account), TimeSpan.FromSeconds(0.1), 1, false);
-            });
-            return await task;
-        }
-
-        private static Building _GetBuildingAsync(long id, long account)
-        {
-            Building building = null;
-            using (NpgsqlConnection connection = GetDbConnection())
-            {
-                building = GetBuilding(connection, id, account);
-                connection.Close();
-            }
-            return building;
-        }
-
-        private static Building GetBuilding(NpgsqlConnection connection, long id, long account)
-        {
-            Building building = null;
-            string query = String.Format("SELECT level, global_id FROM buildings WHERE id = {0} AND account_id = {1};", id, account);
-            using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-            {
-                using (NpgsqlDataReader reader = command.ExecuteReader())
-                {
-                    if (reader.HasRows)
-                    {
-                        building = new Building();
-                        while (reader.Read())
-                        {
-                            building.id = (BuildingID)Enum.Parse(typeof(BuildingID), reader["global_id"].ToString());
-                            int.TryParse(reader["level"].ToString(), out building.level);
-                        }
-                    }
-                }
-            }
-            return building;
-        }
-
-        private static List<Building> GetBuildingsByGlobalID(string globalID, long account, NpgsqlConnection connection)
-        {
-            List<Building> buildings = new List<Building>();
-            string query = String.Format("SELECT buildings.level, buildings.global_id, server_buildings.capacity FROM buildings LEFT JOIN server_buildings ON buildings.global_id = server_buildings.global_id AND buildings.level = server_buildings.level WHERE buildings.global_id = '{0}' AND buildings.account_id = {1};", globalID, account);
-            using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-            {
-                using (NpgsqlDataReader reader = command.ExecuteReader())
-                {
-                    if (reader.HasRows)
-                    {
-                        while (reader.Read())
-                        {
-                            Building building = new Building();
-                            building.id = (BuildingID)Enum.Parse(typeof(BuildingID), reader["global_id"].ToString());
-                            int.TryParse(reader["level"].ToString(), out building.level);
-                            int.TryParse(reader["capacity"].ToString(), out building.capacity);
-                            buildings.Add(building);
-                        }
-                    }
-                }
-            }
-            return buildings;
-        }
 
         private async static Task<List<Building>> GetBuildingsAsync(long account)
         {
@@ -1439,7 +1374,7 @@ namespace Memewars.RealtimeNetworking.Server
                             else
                             {
                                 bool limited = false;
-                                Building townHall = GetBuildingsByGlobalID("townhall", account_id, connection)[0];
+                                Building townHall = Building.GetByGlobalID("townhall", account_id)[0];
                                 if (building.id == "townhall")
                                 {
 
@@ -1647,7 +1582,7 @@ namespace Memewars.RealtimeNetworking.Server
             Packet packet = new Packet();
             packet.Write((int)Terminal.RequestsID.UPGRADE);
             long account_id = Server.clients[id].account;
-            Building building = await GetBuildingAsync(buildingID, account_id);
+            Building building = Building.Get(buildingID);
             if (building == null)
             {
                 packet.Write(0);
@@ -1713,7 +1648,7 @@ namespace Memewars.RealtimeNetworking.Server
                         bool limited = false;
                         if(globalID != BuildingID.obstacle.ToString())
                         {
-                            Building townHall = GetBuildingsByGlobalID("townhall", account_id, connection)[0];
+                            Building townHall = Building.GetByGlobalID("townhall", account_id)[0];
                             if (globalID == "townhall")
                             {
 
@@ -1764,7 +1699,7 @@ namespace Memewars.RealtimeNetworking.Server
             Packet packet = new Packet();
             packet.Write((int)Terminal.RequestsID.INSTANTBUILD);
             long account_id = Server.clients[id].account;
-            Building building = await GetBuildingAsync(buildingID, account_id);
+            Building building = Building.Get(buildingID);
             if (building == null)
             {
                 packet.Write(0);
@@ -1942,7 +1877,7 @@ namespace Memewars.RealtimeNetworking.Server
                 if (unit != null)
                 {
                     int capacity = 0;
-                    List<Building> barracks = GetBuildingsByGlobalID(BuildingID.barracks.ToString(), account_id, connection);
+                    List<Building> barracks = Building.GetByGlobalID(BuildingID.barracks.ToString(), account_id);
                     for (int i = 0; i < barracks.Count; i++)
                     {
                         capacity += barracks[i].capacity;
@@ -3142,7 +3077,7 @@ namespace Memewars.RealtimeNetworking.Server
                 if (spell != null)
                 {
                     int capacity = 0;
-                    List<Building> spellFactory = GetBuildingsByGlobalID(BuildingID.spellfactory.ToString(), account_id, connection);
+                    List<Building> spellFactory = Building.GetByGlobalID(BuildingID.spellfactory.ToString(), account_id);
                     for (int i = 0; i < spellFactory.Count; i++)
                     {
                         capacity += spellFactory[i].capacity;

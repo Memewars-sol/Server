@@ -234,8 +234,6 @@ namespace Models {
             return data;
         }
 
-
-
         public async Task<long> Create() {
             is_cnft = !NonCNFTBuildings.Contains(id);
             ServerBuilding building = await GetServerBuildingAsync(id.ToString(), level);
@@ -293,6 +291,52 @@ namespace Models {
             }
             
             return -1;
+        }
+
+
+        public static Building Get(long id)
+        {
+            Building building = null;
+            string query = String.Format("SELECT level, global_id FROM buildings WHERE id = {0};", id);
+            using NpgsqlConnection connection = Database.GetDbConnection();
+            using NpgsqlCommand command = new(query, connection);
+            using NpgsqlDataReader reader = command.ExecuteReader();
+            if (reader.HasRows)
+            {
+                building = new Building();
+                while (reader.Read())
+                {
+                    building.id = (BuildingID)Enum.Parse(typeof(BuildingID), reader["global_id"].ToString());
+                    _ = int.TryParse(reader["level"].ToString(), out building.level);
+                }
+            }
+            connection.Close();
+            return building;
+        }
+        public static List<Building> GetByGlobalID(string globalID, long account)
+        {
+            List<Building> buildings = new List<Building>();
+            string query = String.Format("SELECT buildings.level, buildings.global_id, server_buildings.capacity FROM buildings LEFT JOIN server_buildings ON buildings.global_id = server_buildings.global_id AND buildings.level = server_buildings.level WHERE buildings.global_id = '{0}' AND buildings.account_id = {1};", globalID, account);
+            using NpgsqlConnection connection = Database.GetDbConnection();
+            using NpgsqlCommand command = new(query, connection);
+            using NpgsqlDataReader reader = command.ExecuteReader();
+            {
+                if (reader.HasRows)
+                {
+                    while (reader.Read())
+                    {
+                        Building building = new()
+                        {
+                            id = (BuildingID)Enum.Parse(typeof(BuildingID), reader["global_id"].ToString())
+                        };
+                        _ = int.TryParse(reader["level"].ToString(), out building.level);
+                        _ = int.TryParse(reader["capacity"].ToString(), out building.capacity);
+                        buildings.Add(building);
+                    }
+                }
+            }
+            connection.Close();
+            return buildings;
         }
 
         public static List<Battle.Building> ConvertToBattleBuildings(List<Building> buildings, BattleType type)
