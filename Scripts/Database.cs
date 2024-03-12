@@ -195,71 +195,6 @@ namespace Memewars.RealtimeNetworking.Server
 
         #region Resource Manager
 
-        private static void AddXP(NpgsqlConnection connection, long account_id, int xp)
-        {
-            int haveXp = 0;
-            int level = 0;
-            string query = String.Format("SELECT xp, level FROM accounts WHERE id = {0}", account_id);
-            using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-            {
-                using (NpgsqlDataReader reader = command.ExecuteReader())
-                {
-                    if (reader.HasRows)
-                    {
-                        while (reader.Read())
-                        {
-                            int.TryParse(reader["xp"].ToString(), out haveXp);
-                            int.TryParse(reader["level"].ToString(), out level);
-                        }
-                    }
-                    else
-                    {
-                        return;
-                    }
-                }
-            }
-            int reachedLevel = level;
-            int reqXp = Data.GetNexLevelRequiredXp(reachedLevel);
-            int remainedXp = haveXp + xp;
-            while (remainedXp >= reqXp)
-            {
-                remainedXp -= reqXp;
-                reachedLevel++;
-                reqXp = Data.GetNexLevelRequiredXp(reachedLevel);
-            }
-            query = String.Format("UPDATE accounts SET level = {0}, xp = {1} WHERE id = {2} AND level = {3} AND xp = {4}", reachedLevel, remainedXp, account_id, level, haveXp);
-            using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-            {
-                command.ExecuteNonQuery();
-            }
-        }
-
-        private static void ChangeClanTrophies(NpgsqlConnection connection, long clan_id, int amount)
-        {
-            if (amount == 0) { return; }
-            if (amount > 0)
-            {
-                string query = String.Format("UPDATE clans SET trophies = trophies + {0} WHERE id = {1}", amount, clan_id);
-                using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                {
-                    command.ExecuteNonQuery();
-                }
-            }
-            else
-            {
-                string query = String.Format("UPDATE clans SET trophies = trophies - {0} WHERE id = {1}", -amount, clan_id);
-                using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                {
-                    command.ExecuteNonQuery();
-                }
-                query = String.Format("UPDATE clans SET trophies = 0 WHERE id = {0} AND trophies < 0", clan_id);
-                using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                {
-                    command.ExecuteNonQuery();
-                }
-            }
-        }
-
         private static void ChangeTrophies(NpgsqlConnection connection, long account_id, int amount)
         {
             if (amount == 0) { return; }
@@ -827,7 +762,7 @@ namespace Memewars.RealtimeNetworking.Server
                 {
                     foreach (var account in accounts)
                     {
-                        AddXP(connection, account.Key, account.Value);
+                        Account.AddXP(account.Key, account.Value);
                     }
                 }
             }
@@ -1754,7 +1689,7 @@ namespace Memewars.RealtimeNetworking.Server
                                         else
                                         {
                                             query = String.Format("INSERT INTO buildings (global_id, account_id, x_position, y_position, level, is_constructing, track_time) VALUES('{0}', {1}, {2}, {3}, 1, 0, NOW() at time zone 'utc' - INTERVAL '1 HOUR');", building.id, account_id, x, y);
-                                            AddXP(connection, account_id, building.gainedXp);
+                                            Account.AddXP(account_id, building.gainedXp);
                                         }
                                         using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
                                         {
@@ -3747,7 +3682,7 @@ namespace Memewars.RealtimeNetworking.Server
                             if (Account.SpendResources(account_id, unit.researchGold, unit.researchElixir, unit.researchGems, unit.researchDarkElixir))
                             {
                                 time = unit.researchTime;
-                                AddXP(connection, account_id, unit.researchXp);
+                                Account.AddXP(account_id, unit.researchXp);
                                 response = 1;
                             }
                             else
@@ -3764,7 +3699,7 @@ namespace Memewars.RealtimeNetworking.Server
                             if (Account.SpendResources(account_id, spell.researchGold, spell.researchElixir, spell.researchGems, spell.researchDarkElixir))
                             {
                                 time = spell.researchTime;
-                                AddXP(connection, account_id, spell.researchXp);
+                                Account.AddXP(account_id, spell.researchXp);
                                 response = 1;
                             }
                             else

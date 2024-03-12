@@ -647,6 +647,39 @@ namespace Models {
             return;
         }
 
+        public static void AddXP(long account_id, int xp)
+        {
+            int haveXp = 0;
+            int level = 0;
+            string query = String.Format("SELECT xp, level FROM accounts WHERE id = {0}", account_id);
+            using NpgsqlConnection connection = Database.GetDbConnection();
+            using NpgsqlCommand command = new(query, connection);
+            using NpgsqlDataReader reader = command.ExecuteReader();
+            if (!reader.HasRows)
+            {
+                return;
+            }
+
+            while (reader.Read())
+            {
+                _ = int.TryParse(reader["xp"].ToString(), out haveXp);
+                _ = int.TryParse(reader["level"].ToString(), out level);
+            }
+            
+            int reachedLevel = level;
+            int reqXp = Data.GetNexLevelRequiredXp(reachedLevel);
+            int remainedXp = haveXp + xp;
+            while (remainedXp >= reqXp)
+            {
+                remainedXp -= reqXp;
+                reachedLevel++;
+                reqXp = Data.GetNexLevelRequiredXp(reachedLevel);
+            }
+            string updateQuery = string.Format("UPDATE accounts SET level = {0}, xp = {1} WHERE id = {2} AND level = {3} AND xp = {4}", reachedLevel, remainedXp, account_id, level, haveXp);
+            using NpgsqlCommand updateCommand = new(updateQuery, connection);
+            updateCommand.ExecuteNonQuery();
+        }
+
         public static void LogIn(long id, long account_id) {
             string query = string.Format(@"UPDATE accounts SET is_online = 1, client_id = {0}, last_login = NOW() at time zone 'utc' WHERE id = {1};", id, account_id);
             using NpgsqlConnection connection = Database.GetDbConnection();
