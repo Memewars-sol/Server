@@ -37,6 +37,11 @@ namespace Models {
         none = 0, ground = 1, air = 2, all = 3
     }
 
+    public enum BuildingLayoutType
+    {
+        normal = 1, war = 2,
+    }
+
     public class ServerBuilding
     {
         public string id = "";
@@ -338,6 +343,180 @@ namespace Models {
             connection.Close();
             return buildings;
         }
+
+        public static int? GetBuildTime(string globalId, int level) {
+            int? time = null;
+            string query = String.Format("SELECT build_time FROM server_buildings WHERE global_id = '{0}' AND level = {1};", globalId, level);
+            using NpgsqlConnection connection = Database.GetDbConnection();
+            using NpgsqlCommand command = new(query, connection);
+            using NpgsqlDataReader reader = command.ExecuteReader();
+            if (reader.HasRows)
+            {
+                while (reader.Read())
+                {
+                    time = int.Parse(reader["build_time"].ToString());
+                }
+            }
+            return time;
+        }
+        
+        public static int Place(long account_id, ServerBuilding building, int x, int y, int layout, long layoutID)
+        {
+            int response = 0;
+            if (building == null || x < 0 || y < 0 || x + building.columns > Data.gridSize || y + building.rows > Data.gridSize)
+            {
+                response = 4;
+                return response;
+            }
+
+            bool IsWarLayout = layout == (int)BuildingLayoutType.war;
+            using NpgsqlConnection connection = Database.GetDbConnection();
+            List<Building> buildings = GetBuildings(account_id);
+            for (int i = 0; i < buildings.Count; i++)
+            {
+                int bX = IsWarLayout ? buildings[i].warX : buildings[i].x;
+                int bY = IsWarLayout ? buildings[i].warY : buildings[i].y;
+                Rectangle rect1 = new(bX, bY, buildings[i].columns, buildings[i].rows);
+                Rectangle rect2 = new(x, y, building.columns, building.rows);
+
+                // intersected
+                if (rect2.IntersectsWith(rect1))
+                {
+                    response = 4;
+                    return response;
+                }
+            }
+
+            // war layout
+            if (IsWarLayout)
+            {
+                long war_id = 0;
+                string warQuery = String.Format("SELECT war_id FROM accounts WHERE id = {0};", account_id);
+                using (NpgsqlCommand command = new(warQuery, connection))
+                {
+                    using NpgsqlDataReader reader = command.ExecuteReader();
+                    if (reader.HasRows)
+                    {
+                        while (reader.Read())
+                        {
+                            _ = long.TryParse(reader["war_id"].ToString(), out war_id);
+                        }
+                    }
+                }
+
+                // no war
+                if (war_id <= 0)
+                {
+                    connection.Close();
+                    return response;
+                }
+
+                int war_stage = 0;
+                warQuery = string.Format("SELECT stage FROM clan_wars WHERE id = {0};", war_id);
+                using (NpgsqlCommand command = new(warQuery, connection))
+                {
+                    using NpgsqlDataReader reader = command.ExecuteReader();
+                    if (reader.HasRows)
+                    {
+                        while (reader.Read())
+                        {
+                            _ = int.TryParse(reader["stage"].ToString(), out war_stage);
+                        }
+                    }
+                }
+                if (war_stage == 1)
+                {
+                    warQuery = string.Format("UPDATE buildings SET x_war = {0}, y_war = {1} WHERE id = {2}", x, y, layoutID);
+                    using NpgsqlCommand command = new(warQuery, connection);
+                    command.ExecuteNonQuery();
+                    response = 1;
+                }
+
+                connection.Close();
+                return response;
+            }
+            
+            int buildersCount = Account.GetBuildingCount(account_id, "buildershut");
+            if (building.id == "buildershut")
+            {
+                // todo
+                building.requiredGems = buildersCount switch
+                {
+                    0 => 0,
+                    1 => 250,
+                    2 => 500,
+                    3 => 1000,
+                    4 => 2000,
+                    _ => 999999,
+                };
+            }
+
+            int? time = GetBuildTime(building.id, 1);
+            bool haveBuilding = time != null; // -1 = no building
+
+            if(!haveBuilding) {
+                response = 3;
+                connection.Close();
+                return response;
+            }
+
+            int constructingCount = Account.GetBuildingConstructionCount(account_id);
+
+            // out of workers
+            if (time > 0 && buildersCount <= constructingCount)
+            {
+                response = 5;
+                connection.Close();
+                return response;
+            }
+
+            Building townHall = Building.GetByGlobalID("townhall", account_id)[0];
+            if (building.id == "townhall")
+            {
+                // dont place townhall
+                connection.Close();
+                return response;
+            }
+
+            BuildingCount limits = Data.GetBuildingLimits(townHall.level, building.id);
+            int haveCount = Account.GetBuildingCount(account_id, building.id);
+
+            // limit reached
+            if (limits == null || haveCount >= limits.count)
+            {
+                response = 6;
+                connection.Close();
+                return response;
+            }
+
+            if (Account.SpendResources(account_id, building.requiredGold, building.requiredElixir, building.requiredGems, building.requiredDarkElixir))
+            {
+                response = 2;
+                connection.Close();
+                return response;
+            }
+
+            string query = "";
+            if (time > 0)
+            {
+                query = String.Format("INSERT INTO buildings (global_id, account_id, x_position, y_position, level, is_constructing, construction_time, construction_build_time, track_time) VALUES('{0}', {1}, {2}, {3}, 0, 1, NOW() at time zone 'utc' + INTERVAL '{4} SECOND', {5}, NOW() at time zone 'utc' - INTERVAL '1 HOUR');", building.id, account_id, x, y, time, time);
+            }
+            else
+            {
+                // instant build
+                query = String.Format("INSERT INTO buildings (global_id, account_id, x_position, y_position, level, is_constructing, track_time) VALUES('{0}', {1}, {2}, {3}, 1, 0, NOW() at time zone 'utc' - INTERVAL '1 HOUR');", building.id, account_id, x, y);
+                Account.AddXP(account_id, building.gainedXp);
+            }
+            using (NpgsqlCommand command = new(query, connection))
+            {
+                command.ExecuteNonQuery();
+                response = 1;
+            }
+
+            connection.Close();
+            return response;
+        }
+
 
         public static List<Battle.Building> ConvertToBattleBuildings(List<Building> buildings, BattleType type)
         {
