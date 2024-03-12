@@ -38,23 +38,6 @@ namespace Memewars.RealtimeNetworking.Server
         public static readonly int confirmationCodeExpiration = 300;
         public static readonly int recoveryCodeLength = 6;
 
-        public class PlayersRanking
-        {
-            public int page = 1;
-            public int pagesCount = 1;
-            public List<PlayerRank> players = new List<PlayerRank>();
-        }
-
-        public class PlayerRank
-        {
-            public long id = 0;
-            public int rank = 0;
-            public string name = "";
-            public int trophies = 0;
-            public int xp = 0;
-            public int level = 0;
-        }
-
         public static string EncodeString(string input)
         {
             try

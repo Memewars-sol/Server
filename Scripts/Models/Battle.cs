@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Memewars.RealtimeNetworking.Server;
+using Npgsql;
 
 namespace Models
 {
@@ -1763,6 +1764,23 @@ namespace Models
                     return false;
             }
             return true;
+        }
+
+        public static int GetUnreadBattleReports(long id) {
+            int count = 0;
+            using NpgsqlConnection connection = Database.GetDbConnection();
+            string query = string.Format("SELECT COUNT(id) AS count FROM battles WHERE defender_id = {0} AND seen <= 0;", id);
+            using NpgsqlCommand command = new(query, connection);
+            using NpgsqlDataReader reader = command.ExecuteReader();
+            if (reader.HasRows)
+            {
+                while (reader.Read())
+                {
+                    _ = int.TryParse(reader["count"].ToString(), out count);
+                }
+            }
+            connection.Close();
+            return count;
         }
 
     }

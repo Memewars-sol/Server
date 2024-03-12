@@ -73,7 +73,6 @@ namespace Memewars.RealtimeNetworking.Server
         private static bool obstaclesUpdating = false;
         private static double obstaclesPeriod = 86400d;
 
-        private static int players_ranking_per_page = 30;
 
         public static void Update()
         {
@@ -110,50 +109,24 @@ namespace Memewars.RealtimeNetworking.Server
 
         public static void Initialize()
         {
-            using (NpgsqlConnection connection = GetDbConnection())
-            {
-                string query = String.Format("UPDATE accounts SET is_online = 0, client_id = 0;");
-                using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                {
-                    command.ExecuteNonQuery();
-                }
-                connection.Close();
-            }
+            using NpgsqlConnection connection = GetDbConnection();
+            string query = string.Format("UPDATE accounts SET is_online = 0, client_id = 0;");
+            using NpgsqlCommand command = new(query, connection);
+            command.ExecuteNonQuery();
+            connection.Close();
         }
 
-        public async static void PlayerDisconnected(int id)
+        public static void PlayerDisconnected(int id)
         {
             long account_id = Server.clients[id].account;
-            if (account_id > 0)
+            if (account_id <= 0)
             {
-                await PlayerDisconnectedAsync(account_id);
-                EndBattle(account_id, true, 0);
+                return;
             }
-        }
 
-        private async static Task<bool> PlayerDisconnectedAsync(long account_id)
-        {
-            Task<bool> task = Task.Run(() =>
-            {
-                return Retry.Do(() => _PlayerDisconnectedAsync(account_id), TimeSpan.FromSeconds(0.1), 100, false);
-            });
-            return await task;
+            Account.OnDisconnect(account_id);
+            EndBattle(account_id, true, 0);
         }
-
-        private static bool _PlayerDisconnectedAsync(long account_id)
-        {
-            using (NpgsqlConnection connection = GetDbConnection())
-            {
-                string query = String.Format("UPDATE accounts SET is_online = 0, client_id = 0 WHERE id = {0}", account_id);
-                using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                {
-                    command.ExecuteNonQuery();
-                }
-                connection.Close();
-            }
-            return true;
-        }
-
         #endregion
 
         #region Player
@@ -163,52 +136,25 @@ namespace Memewars.RealtimeNetworking.Server
             InitializationData auth = await Account.GetInitializationData(id, address);
             Packet packet = new Packet();
             packet.Write((int)Terminal.RequestsID.AUTH);
-            if (auth != null)
-            {
-                Server.clients[id].address = address;
-                Server.clients[id].account = auth.accountID;
-                auth.versions = Terminal.clientVersions;
-                string authData = await Data.SerializeAsync(auth);
-                byte[] authBytes = await Data.CompressAsync(authData);
-                packet.Write(1);
-                packet.Write(authBytes.Length);
-                packet.Write(authBytes);
-                int battles = await GetUnreadBattleReportsAsync(auth.accountID);
-                packet.Write(battles);
-            }
-            else
+            
+            if (auth == null)
             {
                 packet.Write(0);
+                Sender.TCP_Send(id, packet);
+                return;
             }
-            Sender.TCP_Send(id, packet);
-        }
 
-        private async static Task<int> GetUnreadBattleReportsAsync(long id)
-        {
-            Task<int> task = Task.Run(() =>
-            {
-                int count = 0;
-                using (NpgsqlConnection connection = GetDbConnection())
-                {
-                    string query = String.Format("SELECT COUNT(id) AS count FROM battles WHERE defender_id = {0} AND seen <= 0;", id);
-                    using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                    {
-                        using (NpgsqlDataReader reader = command.ExecuteReader())
-                        {
-                            if (reader.HasRows)
-                            {
-                                while (reader.Read())
-                                {
-                                    int.TryParse(reader["count"].ToString(), out count);
-                                }
-                            }
-                        }
-                    }
-                    connection.Close();
-                }
-                return count;
-            });
-            return await task;
+            Server.clients[id].address = address;
+            Server.clients[id].account = auth.accountID;
+            auth.versions = Terminal.clientVersions;
+            string authData = await Data.SerializeAsync(auth);
+            byte[] authBytes = await Data.CompressAsync(authData);
+            packet.Write(1);
+            packet.Write(authBytes.Length);
+            packet.Write(authBytes);
+            int battles = Battle.GetUnreadBattleReports(auth.accountID);
+            packet.Write(battles);
+            Sender.TCP_Send(id, packet);
         }
 
         public async static void SyncPlayerData(int id)
@@ -217,64 +163,23 @@ namespace Memewars.RealtimeNetworking.Server
             Player player = await GetPlayerDataAsync(account_id);
             Packet packet = new Packet();
             packet.Write((int)Terminal.RequestsID.SYNC);
-            if (player != null)
-            {
-                packet.Write(1);
-                List<Building> buildings = await GetBuildingsAsync(account_id);
-                player.units = await GetUnitsAsync(account_id);
-                player.spells = await GetSpellsAsync(account_id);
-                player.buildings = buildings;
-                string playerData = await Data.SerializeAsync<Player>(player);
-                byte[] playerBytes = await Data.CompressAsync(playerData);
-                packet.Write(playerBytes.Length);
-                packet.Write(playerBytes);
-            }
-            else
+            if (player == null)
             {
                 packet.Write(0);
-            }
-            Sender.TCP_Send(id, packet);
-        }
-
-        public async static void ChangePlayerName(int id, string name)
-        {
-            long account_id = Server.clients[id].account;
-            if(account_id > 0)
-            {
-                int response = await ChangePlayerNameAsync(account_id, name);
-                Packet packet = new Packet();
-                packet.Write((int)Terminal.RequestsID.RENAME);
-                packet.Write(response);
                 Sender.TCP_Send(id, packet);
+                return;
             }
-        }
 
-        private async static Task<int> ChangePlayerNameAsync(long id, string name)
-        {
-            Task<int> task = Task.Run(() =>
-            {
-                return Retry.Do(() => _ChangePlayerNameAsync(id, name), TimeSpan.FromSeconds(0.1), 1, false);
-            });
-            return await task;
-        }
-
-        private static int _ChangePlayerNameAsync(long id, string name)
-        {
-            int response = 0;
-            if (!string.IsNullOrEmpty(name))
-            {
-                using (NpgsqlConnection connection = GetDbConnection())
-                {
-                    string query = String.Format("UPDATE accounts SET name = '{0}' WHERE id = {1};", name, id);
-                    using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                    {
-                        command.ExecuteNonQuery();
-                    }
-                    connection.Close();
-                    response = 1;
-                }
-            }
-            return response;
+            packet.Write(1);
+            List<Building> buildings = await GetBuildingsAsync(account_id);
+            player.units = await GetUnitsAsync(account_id);
+            player.spells = await GetSpellsAsync(account_id);
+            player.buildings = buildings;
+            string playerData = await Data.SerializeAsync<Player>(player);
+            byte[] playerBytes = await Data.CompressAsync(playerData);
+            packet.Write(playerBytes.Length);
+            packet.Write(playerBytes);
+            Sender.TCP_Send(id, packet);
         }
 
         private async static Task<Player> GetPlayerDataAsync(long id)
@@ -284,101 +189,6 @@ namespace Memewars.RealtimeNetworking.Server
                 return Retry.Do(() => Account.Get(id), TimeSpan.FromSeconds(0.1), 1, false);
             });
             return await task;
-        }
-
-        public async static void GetPlayersRanking(int id, int page)
-        {
-            long account_id = Server.clients[id].account;
-            Data.PlayersRanking response = await GetPlayersRankingAsync(page, account_id);
-            string rawData = await Data.SerializeAsync<Data.PlayersRanking>(response);
-            byte[] bytes = await Data.CompressAsync(rawData);
-            Packet packet = new Packet();
-            packet.Write((int)Terminal.RequestsID.PLAYERSRANK);
-            packet.Write(bytes.Length);
-            packet.Write(bytes);
-            Sender.TCP_Send(id, packet);
-        }
-
-        private async static Task<Data.PlayersRanking> GetPlayersRankingAsync(int page, long account_id = 0)
-        {
-            Task<Data.PlayersRanking> task = Task.Run(() =>
-            {
-                Data.PlayersRanking response = new Data.PlayersRanking();
-                response = Retry.Do(() => _GetPlayersRankingAsync(page, account_id), TimeSpan.FromSeconds(0.1), 1, false);
-                if (response == null)
-                {
-                    response = new Data.PlayersRanking();
-                    response.players = new List<Data.PlayerRank>();
-                }
-                return response;
-            });
-            return await task;
-        }
-
-        private static Data.PlayersRanking _GetPlayersRankingAsync(int page, long account_id = 0)
-        {
-            Data.PlayersRanking response = new Data.PlayersRanking();
-            using (NpgsqlConnection connection = GetDbConnection())
-            {
-                int playersCount = 0;
-                string query = "SELECT COUNT(*) AS count FROM accounts";
-                using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                {
-                    using (NpgsqlDataReader reader = command.ExecuteReader())
-                    {
-                        if (reader.HasRows)
-                        {
-                            while (reader.Read())
-                            {
-                                int.TryParse(reader["count"].ToString(), out playersCount);
-                            }
-                        }
-                    }
-                }
-
-                response.pagesCount = Convert.ToInt32(Math.Ceiling((double)playersCount / (double)players_ranking_per_page));
-
-                if (response.pagesCount > 0)
-                {
-                    if (page == 0 && account_id > 0)
-                    {
-                        page = 1;
-                        int playerRank = GetPlayerRank(connection, account_id);
-                        if (playerRank > 0)
-                        {
-                            page = Convert.ToInt32(Math.Ceiling((double)playerRank / (double)players_ranking_per_page));
-                        }
-                    }
-                    else if(page <= 0)
-                    {
-                        page = 1;
-                    }
-
-                    response.page = page;
-                }
-                connection.Close();
-            }
-            return response;
-        }
-
-        private static int GetPlayerRank(NpgsqlConnection connection, long account_id)
-        {
-            int rank = 0;
-            string query = String.Format("SELECT id, rank FROM (SELECT id, ROW_NUMBER() OVER(ORDER BY trophies DESC) AS 'rank' FROM accounts) AS ranks WHERE id = {0}", account_id);
-            using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-            {
-                using (NpgsqlDataReader reader = command.ExecuteReader())
-                {
-                    if (reader.HasRows)
-                    {
-                        while (reader.Read())
-                        {
-                            int.TryParse(reader["rank"].ToString(), out rank);
-                        }
-                    }
-                }
-            }
-            return rank;
         }
 
         #endregion

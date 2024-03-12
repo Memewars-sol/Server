@@ -280,7 +280,7 @@ namespace Memewars.RealtimeNetworking.Server
                         break;
                     case RequestsID.PLAYERSRANK:
                         int p = packet.ReadInt();
-                        Database.GetPlayersRanking(clientID, p);
+                        Account.GetPlayersRanking(clientID, p);
                         break;
                     case RequestsID.BOOST:
                         databaseID = packet.ReadLong();
@@ -299,7 +299,7 @@ namespace Memewars.RealtimeNetworking.Server
                         break;
                     case RequestsID.RENAME:
                         string nm = packet.ReadString();
-                        Database.ChangePlayerName(clientID, nm);
+                        Account.UpdateName(clientID, nm);
                         break;
                 }
             }

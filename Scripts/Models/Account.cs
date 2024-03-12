@@ -8,46 +8,65 @@ using WebUtils;
 
 namespace Models {
 
-        public class InitializationData
-        {
-            public long accountID = 0;
-            public string password = "";
-            public string[] versions;
-            public List<ServerBuilding> serverBuildings = new List<ServerBuilding>();
-            public List<ServerUnit> serverUnits = new List<ServerUnit>();
-            public List<ServerSpell> serverSpells = new List<ServerSpell>();
-            public List<Research> research = new List<Research>();
-        }
+    public class InitializationData
+    {
+        public long accountID = 0;
+        public string password = "";
+        public string[] versions;
+        public List<ServerBuilding> serverBuildings = new List<ServerBuilding>();
+        public List<ServerUnit> serverUnits = new List<ServerUnit>();
+        public List<ServerSpell> serverSpells = new List<ServerSpell>();
+        public List<Research> research = new List<Research>();
+    }
 
-        public class Player
-        {
-            public long id = 0;
-            public string name = "Player";
-            public int gems = 0;
-            public int trophies = 0;
-            public bool banned = false;
-            public DateTime nowTime;
-            public DateTime shield;
-            public int xp = 0;
-            public int level = 1;
-            public DateTime clanTimer;
-            public long clanID = 0;
-            public int clanRank = 0;
-            public long warID = 0;
-            public string email = "";
-            public int layout = 0;
-            public DateTime shield1;
-            public DateTime shield2;
-            public DateTime shield3;
-            public long guild_id;
-            public string guild_name;
-            public string guild_logo;
-            public List<Building> buildings = new List<Building>();
-            public List<Unit> units = new List<Unit>();
-            public List<Spell> spells = new List<Spell>();
-        }
+    public class Player
+    {
+        public long id = 0;
+        public string name = "Player";
+        public int gems = 0;
+        public int trophies = 0;
+        public bool banned = false;
+        public DateTime nowTime;
+        public DateTime shield;
+        public int xp = 0;
+        public int level = 1;
+        public DateTime clanTimer;
+        public long clanID = 0;
+        public int clanRank = 0;
+        public long warID = 0;
+        public string email = "";
+        public int layout = 0;
+        public DateTime shield1;
+        public DateTime shield2;
+        public DateTime shield3;
+        public long guild_id;
+        public string guild_name;
+        public string guild_logo;
+        public List<Building> buildings = new List<Building>();
+        public List<Unit> units = new List<Unit>();
+        public List<Spell> spells = new List<Spell>();
+    }
+
+    public class PlayerRank
+    {
+        public long id = 0;
+        public int rank = 0;
+        public string name = "";
+        public int trophies = 0;
+        public int xp = 0;
+        public int level = 0;
+    }
+
+    public class PlayersRanking
+    {
+        public int page = 1;
+        public int pagesCount = 1;
+        public List<PlayerRank> players = new List<PlayerRank>();
+    }
 
     public class Account {
+        private static double players_ranking_per_page = 30;
+
         public long Id { get; set; }
         public string Address { get; set; }
 
@@ -393,6 +412,106 @@ namespace Models {
             command.ExecuteNonQuery();
             connection.Close();
             return;
+        }
+    
+        public static bool OnDisconnect(long account_id) {
+            using NpgsqlConnection connection = Database.GetDbConnection();
+            string query = string.Format("UPDATE accounts SET is_online = 0, client_id = 0 WHERE id = {0}", account_id);
+            using NpgsqlCommand command = new(query, connection);
+            command.ExecuteNonQuery();
+            connection.Close();
+            return true;
+        }
+
+        public static int UpdateName(long id, string newName) {
+            int response = 0;
+            if (string.IsNullOrEmpty(newName))
+            {
+                return response;
+            }
+
+            using NpgsqlConnection connection = Database.GetDbConnection();
+            string query = String.Format("UPDATE accounts SET name = '{0}' WHERE id = {1};", newName, id);
+            using NpgsqlCommand command = new(query, connection);
+            command.ExecuteNonQuery();
+            connection.Close();
+            response = 1;
+            return response;
+        }
+    
+
+        public static int GetRank(long account_id)
+        {
+            using NpgsqlConnection connection = Database.GetDbConnection();
+            int rank = 0;
+            string query = String.Format("SELECT id, rank FROM (SELECT id, ROW_NUMBER() OVER(ORDER BY trophies DESC) AS 'rank' FROM accounts) AS ranks WHERE id = {0}", account_id);
+            using NpgsqlCommand command = new(query, connection);
+            using NpgsqlDataReader reader = command.ExecuteReader();
+            if (reader.HasRows)
+            {
+                while (reader.Read())
+                {
+                    _ = int.TryParse(reader["rank"].ToString(), out rank);
+                }
+            }
+            connection.Close();
+            return rank;
+        }
+
+        public async static void GetPlayersRanking(int id, int page)
+        {
+            long account_id = Server.clients[id].account;
+            PlayersRanking response = GetRankings(page, account_id);
+            string rawData = await Data.SerializeAsync(response);
+            byte[] bytes = await Data.CompressAsync(rawData);
+            Packet packet = new Packet();
+            packet.Write((int)Terminal.RequestsID.PLAYERSRANK);
+            packet.Write(bytes.Length);
+            packet.Write(bytes);
+            Sender.TCP_Send(id, packet);
+        }
+
+        public static PlayersRanking GetRankings(int page, long account_id = 0) {
+
+            PlayersRanking response = new();
+            using NpgsqlConnection connection = Database.GetDbConnection();
+            int playersCount = 0;
+            string query = "SELECT COUNT(*) AS count FROM accounts";
+            using NpgsqlCommand command = new(query, connection);
+            using NpgsqlDataReader reader = command.ExecuteReader();
+            if (reader.HasRows)
+            {
+                while (reader.Read())
+                {
+                    _ = int.TryParse(reader["count"].ToString(), out playersCount);
+                }
+            }
+            connection.Close();
+
+            // dont have ranking
+            response.pagesCount = Convert.ToInt32(Math.Ceiling((double)playersCount / players_ranking_per_page));
+            if (response.pagesCount == 0)
+            {
+                return response;
+            }
+
+            // ??
+            page = 1;
+            if(page <= 0 || account_id == 0) {
+                return response;
+            }
+
+            // get their rank
+            int playerRank = GetRank(account_id);
+            if (playerRank == 0)
+            {
+                page = Convert.ToInt32(Math.Ceiling((double)playerRank / (double)players_ranking_per_page));
+            }
+            
+            // ??
+            response.page = page;
+            response.players = new List<PlayerRank>();
+            return response;
         }
     }
 }
