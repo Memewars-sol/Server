@@ -445,7 +445,7 @@ namespace Models {
                 return response;
             }
 
-            string query = "";
+            string query;
             if (time > 0)
             {
                 query = String.Format("INSERT INTO buildings (global_id, account_id, x_position, y_position, level, is_constructing, construction_time, construction_build_time, track_time) VALUES('{0}', {1}, {2}, {3}, 0, 1, NOW() at time zone 'utc' + INTERVAL '{4} SECOND', {5}, NOW() at time zone 'utc' - INTERVAL '1 HOUR');", building.id, account_id, x, y, time, time);

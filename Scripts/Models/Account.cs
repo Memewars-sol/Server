@@ -282,6 +282,65 @@ namespace Models {
             return data;
         }
     
+        public static List<Building> GetBuildings(long id) {
+
+            List<Building> data = new List<Building>();
+            string query = String.Format("SELECT buildings.id, buildings.global_id, buildings.level, buildings.x_position, buildings.x_war, buildings.y_war, buildings.boost, buildings.gold_storage, buildings.elixir_storage, buildings.dark_elixir_storage, buildings.y_position, buildings.construction_time, buildings.is_constructing, buildings.construction_build_time, server_buildings.columns_count, server_buildings.rows_count, server_buildings.health, server_buildings.speed, server_buildings.radius, server_buildings.capacity, server_buildings.gold_capacity, server_buildings.elixir_capacity, server_buildings.dark_elixir_capacity, server_buildings.damage, server_buildings.target_type, server_buildings.blind_radius, server_buildings.splash_radius, server_buildings.projectile_speed FROM buildings LEFT JOIN server_buildings ON buildings.global_id = server_buildings.global_id AND buildings.level = server_buildings.level WHERE buildings.account_id = {0};", id);
+            var ret = Database.ExecuteForResults(query);
+            if (ret.Count > 0)
+            {
+                foreach(var res in ret)
+                {
+                    Building building = new()
+                    {
+                        id = (BuildingID)Enum.Parse(typeof(BuildingID), res["global_id"])
+                    };
+                    _ = long.TryParse(res["id"], out building.databaseID);
+                    _ = int.TryParse(res["level"], out building.level);
+                    _ = int.TryParse(res["x_position"], out building.x);
+                    _ = int.TryParse(res["y_position"], out building.y);
+                    _ = int.TryParse(res["x_war"], out building.warX);
+                    _ = int.TryParse(res["y_war"], out building.warY);
+                    _ = int.TryParse(res["columns_count"], out building.columns);
+                    _ = int.TryParse(res["rows_count"], out building.rows);
+
+                    _ = float.TryParse(res["gold_storage"], out float storage);
+                    building.goldStorage = (int)Math.Floor(storage);
+
+                    storage = 0;
+                    _ = float.TryParse(res["elixir_storage"], out storage);
+                    building.elixirStorage = (int)Math.Floor(storage);
+
+                    storage = 0;
+                    _ = float.TryParse(res["dark_elixir_storage"], out storage);
+                    building.darkStorage = (int)Math.Floor(storage);
+
+                    _ = DateTime.TryParse(res["boost"], out building.boost);
+                    _ = float.TryParse(res["damage"], out building.damage);
+                    _ = int.TryParse(res["capacity"], out building.capacity);
+                    _ = int.TryParse(res["gold_capacity"], out building.goldCapacity);
+                    _ = int.TryParse(res["elixir_capacity"], out building.elixirCapacity);
+                    _ = int.TryParse(res["dark_elixir_capacity"], out building.darkCapacity);
+                    _ = float.TryParse(res["speed"], out building.speed);
+                    _ = float.TryParse(res["radius"], out building.radius);
+                    _ = int.TryParse(res["health"], out building.health);
+                    _ = DateTime.TryParse(res["construction_time"], out building.constructionTime);
+                    _ = float.TryParse(res["blind_radius"], out building.blindRange);
+                    _ = float.TryParse(res["splash_radius"], out building.splashRange);
+                    _ = float.TryParse(res["projectile_speed"], out building.rangedSpeed);
+                    string tt = res["target_type"];
+                    if (!string.IsNullOrEmpty(tt))
+                    {
+                        building.targetType = (BuildingTargetType)Enum.Parse(typeof(BuildingTargetType), tt);
+                    }
+                    _ = int.TryParse(res["is_constructing"], out int isConstructing);
+                    building.isConstructing = isConstructing > 0;
+                    _ = int.TryParse(res["construction_build_time"], out building.buildTime);
+                    data.Add(building);
+                }
+            }
+            return data;
+        }
         public static int GetBuildingCount(long accountId, string globalId) {
             int count = 0;
             string query = string.Format("SELECT count(id) as building_count FROM buildings WHERE account_id = {0} AND global_id = '{1}';", accountId, globalId);
@@ -345,6 +404,7 @@ namespace Models {
             }
             return true;
         }
+        
         public static bool SpendResources(long account_id, int gold, int elixir, int gems, int darkElixir)
         {
             if (!CheckResources(account_id, gold, elixir, gems, darkElixir)) {

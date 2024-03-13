@@ -226,7 +226,7 @@ namespace Memewars.RealtimeNetworking.Server
             }
 
             packet.Write(1);
-            List<Building> buildings = await GetBuildingsAsync(account_id);
+            List<Building> buildings = Account.GetBuildings(account_id);
             player.units = await GetUnitsAsync(account_id);
             player.spells = await GetSpellsAsync(account_id);
             player.buildings = buildings;
@@ -1094,7 +1094,7 @@ namespace Memewars.RealtimeNetworking.Server
                         }
                         for (int j = 0; j < accounts.Count; j++)
                         {
-                            List<Building> buildings = GetBuildings(connection, accounts[j]);
+                            List<Building> buildings = Account.GetBuildings(accounts[j]);
                             Random rnd = new Random();
                             int centerX = rnd.Next(0, Data.gridSize);
                             int centerY = rnd.Next(0, Data.gridSize);
@@ -1200,96 +1200,6 @@ namespace Memewars.RealtimeNetworking.Server
         
         #endregion
 
-        #region Buildings
-
-
-        private async static Task<List<Building>> GetBuildingsAsync(long account)
-        {
-            Task<List<Building>> task = Task.Run(() =>
-            {
-                return Retry.Do(() => _GetBuildingsAsync(account), TimeSpan.FromSeconds(0.1), 1, false);
-            });
-            return await task;
-        }
-
-        private static List<Building> _GetBuildingsAsync(long account)
-        {
-            List<Building> data = new List<Building>();
-            using (NpgsqlConnection connection = GetDbConnection())
-            {
-                data = GetBuildings(connection, account);
-                connection.Close();
-            }
-            return data;
-        }
-
-        private static List<Building> GetBuildings(NpgsqlConnection connection, long account)
-        {
-            List<Building> data = new List<Building>();
-            string query = String.Format("SELECT buildings.id, buildings.global_id, buildings.level, buildings.x_position, buildings.x_war, buildings.y_war, buildings.boost, buildings.gold_storage, buildings.elixir_storage, buildings.dark_elixir_storage, buildings.y_position, buildings.construction_time, buildings.is_constructing, buildings.construction_build_time, server_buildings.columns_count, server_buildings.rows_count, server_buildings.health, server_buildings.speed, server_buildings.radius, server_buildings.capacity, server_buildings.gold_capacity, server_buildings.elixir_capacity, server_buildings.dark_elixir_capacity, server_buildings.damage, server_buildings.target_type, server_buildings.blind_radius, server_buildings.splash_radius, server_buildings.projectile_speed FROM buildings LEFT JOIN server_buildings ON buildings.global_id = server_buildings.global_id AND buildings.level = server_buildings.level WHERE buildings.account_id = {0};", account);
-            using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-            {
-                using (NpgsqlDataReader reader = command.ExecuteReader())
-                {
-                    if (reader.HasRows)
-                    {
-                        while (reader.Read())
-                        {
-                            Building building = new Building();
-                            building.id = (BuildingID)Enum.Parse(typeof(BuildingID), reader["global_id"].ToString());
-                            long.TryParse(reader["id"].ToString(), out building.databaseID);
-                            int.TryParse(reader["level"].ToString(), out building.level);
-                            int.TryParse(reader["x_position"].ToString(), out building.x);
-                            int.TryParse(reader["y_position"].ToString(), out building.y);
-                            int.TryParse(reader["x_war"].ToString(), out building.warX);
-                            int.TryParse(reader["y_war"].ToString(), out building.warY);
-                            int.TryParse(reader["columns_count"].ToString(), out building.columns);
-                            int.TryParse(reader["rows_count"].ToString(), out building.rows);
-
-                            float storage = 0;
-                            float.TryParse(reader["gold_storage"].ToString(), out storage);
-                            building.goldStorage = (int)Math.Floor(storage);
-
-                            storage = 0;
-                            float.TryParse(reader["elixir_storage"].ToString(), out storage);
-                            building.elixirStorage = (int)Math.Floor(storage);
-
-                            storage = 0;
-                            float.TryParse(reader["dark_elixir_storage"].ToString(), out storage);
-                            building.darkStorage = (int)Math.Floor(storage);
-
-                            DateTime.TryParse(reader["boost"].ToString(), out building.boost);
-                            float.TryParse(reader["damage"].ToString(), out building.damage);
-                            int.TryParse(reader["capacity"].ToString(), out building.capacity);
-                            int.TryParse(reader["gold_capacity"].ToString(), out building.goldCapacity);
-                            int.TryParse(reader["elixir_capacity"].ToString(), out building.elixirCapacity);
-                            int.TryParse(reader["dark_elixir_capacity"].ToString(), out building.darkCapacity);
-                            float.TryParse(reader["speed"].ToString(), out building.speed);
-                            float.TryParse(reader["radius"].ToString(), out building.radius);
-                            int.TryParse(reader["health"].ToString(), out building.health);
-                            DateTime.TryParse(reader["construction_time"].ToString(), out building.constructionTime);
-                            float.TryParse(reader["blind_radius"].ToString(), out building.blindRange);
-                            float.TryParse(reader["splash_radius"].ToString(), out building.splashRange);
-                            float.TryParse(reader["projectile_speed"].ToString(), out building.rangedSpeed);
-                            string tt = reader["target_type"].ToString();
-                            if (!string.IsNullOrEmpty(tt))
-                            {
-                                building.targetType = (BuildingTargetType)Enum.Parse(typeof(BuildingTargetType), tt);
-                            }
-                            int isConstructing = 0;
-                            int.TryParse(reader["is_constructing"].ToString(), out isConstructing);
-                            building.isConstructing = isConstructing > 0;
-                            int.TryParse(reader["construction_build_time"].ToString(), out building.buildTime);
-                            data.Add(building);
-                        }
-                    }
-                }
-            }
-            return data;
-        }
-
-        #endregion
-
         #region Build And Replace
 
         public async static void PlaceBuilding(int id, string buildingID, int x, int y, int layout, long layoutID)
@@ -1330,7 +1240,7 @@ namespace Memewars.RealtimeNetworking.Server
             int response = 0;
             using (NpgsqlConnection connection = GetDbConnection())
             {
-                List<Building> buildings = GetBuildings(connection, account_id);
+                List<Building> buildings = Account.GetBuildings(account_id);
                 Building building = null;
 
                 if (buildings != null && buildings.Count > 0)
@@ -1905,7 +1815,7 @@ namespace Memewars.RealtimeNetworking.Server
                 opponent.data = await GetPlayerDataAsync(target);
                 if (opponent.data != null)
                 {
-                    opponent.buildings = await GetBuildingsAsync(target);
+                    opponent.buildings = Account.GetBuildings(target);
                     if (opponent.buildings != null)
                     {
                         opponent.buildings = await SetBuildingsPercentAsync(opponent.buildings, BattleType.normal);
@@ -2095,7 +2005,7 @@ namespace Memewars.RealtimeNetworking.Server
             Data.OpponentData opponentServer = new Data.OpponentData();
             if (canAttack)
             {
-                opponentServer.buildings = await GetBuildingsAsync(opponentClent.id);
+                opponentServer.buildings = Account.GetBuildings(opponentClent.id);
                 if (opponentServer.buildings != null)
                 {
                     opponentServer.buildings = await SetBuildingsPercentAsync(opponentServer.buildings, type);
@@ -2166,7 +2076,7 @@ namespace Memewars.RealtimeNetworking.Server
             {
                 packet.Write(1);
                 packet.Write(type);
-                player.buildings = await GetBuildingsAsync(target);
+                player.buildings = Account.GetBuildings(target);
                 string data = await Data.SerializeAsync<Player>(player);
                 byte[] bytes = await Data.CompressAsync(data);
                 packet.Write(bytes.Length);
