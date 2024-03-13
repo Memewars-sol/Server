@@ -1526,75 +1526,21 @@ namespace Memewars.RealtimeNetworking.Server
         public async static void GetBattlesList(int id)
         {
             long account_id = Server.clients[id].account;
-            List<BattleReportItem> reports = await GetBattlesListAsync(account_id);
+            List<BattleReportItem> reports = Battle.All(account_id);
             Packet packet = new Packet();
             packet.Write((int)Terminal.RequestsID.BATTLEREPORTS);
-            if(reports != null && reports.Count > 0)
-            {
-                packet.Write(1);
-                string data = await Data.SerializeAsync<List<BattleReportItem>>(reports);
-                byte[] bytes = await Data.CompressAsync(data);
-                packet.Write(bytes.Length);
-                packet.Write(bytes);
-            }
-            else
+            if(reports == null || reports.Count == 0)
             {
                 packet.Write(0);
+                Sender.TCP_Send(id, packet);
+                return;
             }
+            packet.Write(1);
+            string data = await Data.SerializeAsync<List<BattleReportItem>>(reports);
+            byte[] bytes = await Data.CompressAsync(data);
+            packet.Write(bytes.Length);
+            packet.Write(bytes);
             Sender.TCP_Send(id, packet);
-        }
-
-        private async static Task<List<BattleReportItem>> GetBattlesListAsync(long account_id)
-        {
-            Task<List<BattleReportItem>> task = Task.Run(() =>
-            {
-                return Retry.Do(() => _GetBattlesListAsync(account_id), TimeSpan.FromSeconds(0.1), 1, false);
-            });
-            return await task;
-        }
-
-        private static List<BattleReportItem> _GetBattlesListAsync(long account_id)
-        {
-            List<BattleReportItem> reports = new List<BattleReportItem>();
-            using (NpgsqlConnection connection = GetDbConnection())
-            {
-                string query = String.Format("SELECT battles.id, battles.attacker_id, battles.defender_id, battles.end_time, battles.stars, battles.trophies, battles.looted_gold, battles.looted_elixir, battles.looted_dark_elixir, battles.seen, battles.replay_path, accounts.name FROM battles LEFT JOIN accounts ON accounts.id = (battles.attacker_id + battles.defender_id - {0}) WHERE battles.attacker_id = {0} OR battles.defender_id = {0} ORDER BY battles.end_time DESC LIMIT 20", account_id);
-                using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                {
-                    using (NpgsqlDataReader reader = command.ExecuteReader())
-                    {
-                        if (reader.HasRows)
-                        {
-                            while (reader.Read())
-                            {
-                                BattleReportItem report = new BattleReportItem();
-                                long.TryParse(reader["id"].ToString(), out report.id);
-                                long.TryParse(reader["attacker_id"].ToString(), out report.attacker);
-                                long.TryParse(reader["defender_id"].ToString(), out report.defender);
-                                int s = 0;
-                                int.TryParse(reader["seen"].ToString(), out s);
-                                report.seen = s > 0;
-                                DateTime.TryParse(reader["end_time"].ToString(), out report.time);
-                                int.TryParse(reader["stars"].ToString(), out report.stars);
-                                int.TryParse(reader["trophies"].ToString(), out report.trophies);
-                                int.TryParse(reader["looted_gold"].ToString(), out report.gold);
-                                int.TryParse(reader["looted_elixir"].ToString(), out report.elixir);
-                                int.TryParse(reader["looted_dark_elixir"].ToString(), out report.dark);
-                                report.username = reader["name"].ToString();
-                                report.hasReply = !string.IsNullOrEmpty(reader["replay_path"].ToString());
-                                reports.Add(report);
-                            }
-                        }
-                    }
-                }
-                query = String.Format("UPDATE battles SET seen = 1 WHERE defender_id = {0} AND seen <= 0", account_id);
-                using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                {
-                    command.ExecuteNonQuery();
-                }
-                connection.Close();
-            }
-            return reports;
         }
 
         public async static void GetBattleReport(int id, long report_id)
@@ -1606,20 +1552,20 @@ namespace Memewars.RealtimeNetworking.Server
             if(report == null)
             {
                 packet.Write(0);
+                Sender.TCP_Send(id, packet);
+                return;
             }
-            else
-            {
-                packet.Write(1);
-                string data = await Data.SerializeAsync<BattleReport>(report);
-                byte[] bytes = await Data.CompressAsync(data);
-                packet.Write(bytes.Length);
-                packet.Write(bytes);
-                Player player = Account.Get(account_id == report.attacker ? report.defender : report.attacker);
-                data = await Data.SerializeAsync<Player>(player);
-                bytes = await Data.CompressAsync(data);
-                packet.Write(bytes.Length);
-                packet.Write(bytes);
-            }
+
+            packet.Write(1);
+            string data = await Data.SerializeAsync<BattleReport>(report);
+            byte[] bytes = await Data.CompressAsync(data);
+            packet.Write(bytes.Length);
+            packet.Write(bytes);
+            Player player = Account.Get(account_id == report.attacker ? report.defender : report.attacker);
+            data = await Data.SerializeAsync<Player>(player);
+            bytes = await Data.CompressAsync(data);
+            packet.Write(bytes.Length);
+            packet.Write(bytes);
             Sender.TCP_Send(id, packet);
         }
 

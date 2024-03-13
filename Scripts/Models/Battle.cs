@@ -1893,5 +1893,37 @@ namespace Models
             report = Data.Desrialize<BattleReport>(data);
             return report;
         }
+
+        public static List<BattleReportItem> All(long account_id)
+        {
+            List<BattleReportItem> reports = new List<BattleReportItem>();
+            string query = String.Format("SELECT battles.id, battles.attacker_id, battles.defender_id, battles.end_time, battles.stars, battles.trophies, battles.looted_gold, battles.looted_elixir, battles.looted_dark_elixir, battles.seen, battles.replay_path, accounts.name FROM battles LEFT JOIN accounts ON accounts.id = (battles.attacker_id + battles.defender_id - {0}) WHERE battles.attacker_id = {0} OR battles.defender_id = {0} ORDER BY battles.end_time DESC LIMIT 20", account_id);
+            var ret = Database.ExecuteForResults(query);
+            if (ret.Count > 0)
+            {
+                foreach(var res in ret)
+                {
+                    BattleReportItem report = new();
+                    _ = long.TryParse(res["id"], out report.id);
+                    _ = long.TryParse(res["attacker_id"], out report.attacker);
+                    _ = long.TryParse(res["defender_id"], out report.defender);
+                    _ = int.TryParse(res["seen"], out int s);
+                    report.seen = s > 0;
+                    _ = DateTime.TryParse(res["end_time"], out report.time);
+                    _ = int.TryParse(res["stars"], out report.stars);
+                    _ = int.TryParse(res["trophies"], out report.trophies);
+                    _ = int.TryParse(res["looted_gold"], out report.gold);
+                    _ = int.TryParse(res["looted_elixir"], out report.elixir);
+                    _ = int.TryParse(res["looted_dark_elixir"], out report.dark);
+                    report.username = res["name"];
+                    report.hasReply = !string.IsNullOrEmpty(res["replay_path"]);
+                    reports.Add(report);
+                }
+            }
+            query = String.Format("UPDATE battles SET seen = 1 WHERE defender_id = {0} AND seen <= 0", account_id);
+            Database.ExecuteNonQuery(query);
+            return reports;
+        }
+
     }
 }
