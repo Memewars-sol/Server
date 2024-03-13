@@ -227,7 +227,7 @@ namespace Memewars.RealtimeNetworking.Server
 
             packet.Write(1);
             List<Building> buildings = Account.GetBuildings(account_id);
-            player.units = await GetUnitsAsync(account_id);
+            player.units = Unit.GetUnits(account_id);
             player.spells = await GetSpellsAsync(account_id);
             player.buildings = buildings;
             string playerData = await Data.SerializeAsync<Player>(player);
@@ -1213,12 +1213,12 @@ namespace Memewars.RealtimeNetworking.Server
             Sender.TCP_Send(id, packet);
         }
 
-        public async static void ReplaceBuilding(int id, long databaseID, int x, int y, int layout)
+        public static void ReplaceBuilding(int id, long databaseID, int x, int y, int layout)
         {
             Packet packet = new Packet();
             packet.Write((int)Terminal.RequestsID.REPLACE);
             long account_id = Server.clients[id].account;
-            int response = await ReplaceBuildingAsync(account_id, databaseID, x, y, layout);
+            int response = Building.Replace(account_id, databaseID, x, y, layout);
             packet.Write(response);
             packet.Write(x);
             packet.Write(y);
@@ -1226,138 +1226,7 @@ namespace Memewars.RealtimeNetworking.Server
             Sender.TCP_Send(id, packet);
         }
 
-        private async static Task<int> ReplaceBuildingAsync(long account_id, long building_id, int x, int y, int layout)
-        {
-            Task<int> task = Task.Run(() =>
-            {
-                return Retry.Do(() => _ReplaceBuildingAsync(account_id, building_id, x, y, layout), TimeSpan.FromSeconds(0.1), 1, false);
-            });
-            return await task;
-        }
-
-        private static int _ReplaceBuildingAsync(long account_id, long building_id, int x, int y, int layout)
-        {
-            int response = 0;
-            using (NpgsqlConnection connection = GetDbConnection())
-            {
-                List<Building> buildings = Account.GetBuildings(account_id);
-                Building building = null;
-
-                if (buildings != null && buildings.Count > 0)
-                {
-                    for (int i = 0; i < buildings.Count; i++)
-                    {
-                        if (buildings[i].databaseID == building_id)
-                        {
-                            building = buildings[i];
-                            break;
-                        }
-                    }
-                }
-                if (building != null)
-                {
-                    bool canPlaceBuilding = true;
-                    if (x < 0 || y < 0 || x + building.columns > Data.gridSize || y + building.rows > Data.gridSize)
-                    {
-                        canPlaceBuilding = false;
-                    }
-                    else
-                    {
-                        for (int i = 0; i < buildings.Count; i++)
-                        {
-                            if (buildings[i].databaseID != building.databaseID)
-                            {
-                                int bX = (layout == 2) ? buildings[i].warX : buildings[i].x;
-                                int bY = (layout == 2) ? buildings[i].warY : buildings[i].y;
-                                Rectangle rect1 = new Rectangle(bX, bY, buildings[i].columns, buildings[i].rows);
-                                Rectangle rect2 = new Rectangle(x, y, building.columns, building.rows);
-                                if (rect2.IntersectsWith(rect1))
-                                {
-                                    canPlaceBuilding = false;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                    if (canPlaceBuilding)
-                    {
-                        string query = "";
-                        if (layout == 2)
-                        {
-                            long war_id = 0;
-                            query = String.Format("SELECT war_id FROM accounts WHERE id = {0};", account_id);
-                            using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                            {
-                                using (NpgsqlDataReader reader = command.ExecuteReader())
-                                {
-                                    if (reader.HasRows)
-                                    {
-                                        while (reader.Read())
-                                        {
-                                            long.TryParse(reader["war_id"].ToString(), out war_id);
-                                        }
-                                    }
-                                }
-                            }
-                            if (war_id > 0)
-                            {
-                                int war_stage = 0;
-                                query = String.Format("SELECT stage FROM clan_wars WHERE id = {0};", war_id);
-                                using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                                {
-                                    using (NpgsqlDataReader reader = command.ExecuteReader())
-                                    {
-                                        if (reader.HasRows)
-                                        {
-                                            while (reader.Read())
-                                            {
-                                                int.TryParse(reader["stage"].ToString(), out war_stage);
-                                            }
-                                        }
-                                    }
-                                }
-                                if (war_stage == 1)
-                                {
-                                    query = String.Format("UPDATE buildings SET x_war = {0}, y_war = {1} WHERE id = {2};", x, y, building_id);
-                                }
-                                else
-                                {
-                                    query = "";
-                                }
-                            }
-                            else
-                            {
-                                query = "";
-                            }
-                        }
-                        else
-                        {
-                            query = String.Format("UPDATE buildings SET x_position = {0}, y_position = {1} WHERE id = {2};", x, y, building_id);
-                        }
-                        if (!string.IsNullOrEmpty(query))
-                        {
-                            using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                            {
-                                command.ExecuteNonQuery();
-                            }
-                            response = 1;
-                        }
-                        else
-                        {
-                            response = 3;
-                        }
-                    }
-                    else
-                    {
-                        response = 2;
-                    }
-                }
-                connection.Close();
-            }
-            return response;
-        }
-
-        public async static void UpgradeBuilding(int id, long buildingID)
+        public static void UpgradeBuilding(int id, long buildingID)
         {
             Packet packet = new Packet();
             packet.Write((int)Terminal.RequestsID.UPGRADE);
@@ -1366,115 +1235,15 @@ namespace Memewars.RealtimeNetworking.Server
             if (building == null)
             {
                 packet.Write(0);
+                Sender.TCP_Send(id, packet);
+                return;
             }
-            else
-            {
-                int response = await UpgradeBuildingAsync(account_id, buildingID, building.level, building.id.ToString());
-                packet.Write(response);
-            }
+
+            int response = Building.Upgrade(account_id, buildingID, building.level, building.id.ToString());
+            packet.Write(response);
             Sender.TCP_Send(id, packet);
         }
-
-        private async static Task<int> UpgradeBuildingAsync(long account_id, long buildingID, int level, string globalID)
-        {
-            Task<int> task = Task.Run(() =>
-            {
-                return Retry.Do(() => _UpgradeBuildingAsync(account_id, buildingID, level, globalID), TimeSpan.FromSeconds(0.1), 1, false);
-            });
-            return await task;
-        }
-
-        private static int _UpgradeBuildingAsync(long account_id, long buildingID, int level, string globalID)
-        {
-            int response = 0;
-            using (NpgsqlConnection connection = GetDbConnection())
-            {
-                int time = 0;
-                bool haveLevel = false;
-                int reqGold = 0;
-                int reqElixir = 0;
-                int reqDarkElixir = 0;
-                int reqGems = 0;
-                string query = String.Format("SELECT req_gold, req_elixir, req_dark_elixir, req_gems, build_time FROM server_buildings WHERE global_id = '{0}' AND level = {1};", globalID, globalID == BuildingID.obstacle.ToString() ? level : level + 1);
-                using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                {
-                    using (NpgsqlDataReader reader = command.ExecuteReader())
-                    {
-                        if (reader.HasRows)
-                        {
-                            while (reader.Read())
-                            {
-                                haveLevel = true;
-                                time = int.Parse(reader["build_time"].ToString());
-                                reqGold = int.Parse(reader["req_gold"].ToString());
-                                reqElixir = int.Parse(reader["req_elixir"].ToString());
-                                reqDarkElixir = int.Parse(reader["req_dark_elixir"].ToString());
-                                reqGems = int.Parse(reader["req_gems"].ToString());
-                            }
-                        }
-                    }
-                }
-
-                if (haveLevel)
-                {
-                    int buildersCount = Account.GetBuildingCount(account_id, "buildershut");
-                    int constructingCount = Account.GetBuildingConstructionCount(account_id);
-                    if (time > 0 && buildersCount <= constructingCount)
-                    {
-                        response = 5;
-                    }
-                    else
-                    {
-                        bool limited = false;
-                        if(globalID != BuildingID.obstacle.ToString())
-                        {
-                            Building townHall = Building.GetByGlobalID("townhall", account_id)[0];
-                            if (globalID == "townhall")
-                            {
-
-                            }
-                            else
-                            {
-                                BuildingCount limits = Data.GetBuildingLimits(townHall.level, globalID);
-                                int haveCount = Account.GetBuildingCount(account_id, globalID);
-                                if (haveCount >= limits.count && level >= limits.maxLevel)
-                                {
-                                    limited = true;
-                                }
-                            }
-                        }
-                        if (limited)
-                        {
-                            response = 6;
-                        }
-                        else
-                        {
-                            if (Account.SpendResources(account_id, reqGold, reqElixir, reqGems, reqDarkElixir))
-                            {
-                                query = String.Format("UPDATE buildings SET is_constructing = 1, construction_time =  NOW() at time zone 'utc' + INTERVAL '{0} SECOND', construction_build_time = {1} WHERE id = {2};", time, time, buildingID);
-                                using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                                {
-                                    command.ExecuteNonQuery();
-                                    response = 1;
-                                }
-                            }
-                            else
-                            {
-                                response = 2;
-                            }
-                        }
-                    }
-                }
-                else
-                {
-                    response = 3;
-                }
-                connection.Close();
-            }
-            return response;
-        }
-
-        public async static void InstantBuild(int id, long buildingID)
+        public static void InstantBuild(int id, long buildingID)
         {
             Packet packet = new Packet();
             packet.Write((int)Terminal.RequestsID.INSTANTBUILD);
@@ -1483,230 +1252,27 @@ namespace Memewars.RealtimeNetworking.Server
             if (building == null)
             {
                 packet.Write(0);
+                Sender.TCP_Send(id, packet);
+                return;
             }
-            else
-            {
-                int res = await InstantBuildAsync(account_id, buildingID, building.level, building.id.ToString());
-                packet.Write(res);
-            }
+
+            int res = Building.InstantBuild(account_id, buildingID, building.level, building.id.ToString());
+            packet.Write(res);
             Sender.TCP_Send(id, packet);
-        }
-
-        private async static Task<int> InstantBuildAsync(long account_id, long buildingID, int level, string globalID)
-        {
-            Task<int> task = Task.Run(() =>
-            {
-                return Retry.Do(() => _InstantBuildAsync(account_id, buildingID, level, globalID), TimeSpan.FromSeconds(0.1), 1, false);
-            });
-            return await task;
-        }
-
-        private static int _InstantBuildAsync(long account_id, long buildingID, int level, string globalID)
-        {
-            int id = 0;
-            using (NpgsqlConnection connection = GetDbConnection())
-            {
-                int time = 0;
-                string query = String.Format("SELECT construction_time, NOW() at time zone 'utc' AS now_time FROM buildings WHERE id = {0} AND account_id = {1} AND is_constructing > 0;", buildingID, account_id);
-                using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                {
-                    using (NpgsqlDataReader reader = command.ExecuteReader())
-                    {
-                        if (reader.HasRows)
-                        {
-                            while (reader.Read())
-                            {
-                                DateTime target = DateTime.Parse(reader["construction_time"].ToString());
-                                DateTime now = DateTime.Parse(reader["now_time"].ToString());
-                                if (target > now)
-                                {
-                                    time = (int)(target - now).TotalSeconds;
-                                }
-                            }
-                        }
-                    }
-                }
-                if (time > 0)
-                {
-                    int requiredGems = Data.GetInstantBuildRequiredGems(time);
-                    if (Account.SpendResources(account_id, 0, 0, requiredGems, 0))
-                    {
-                        query = String.Format("UPDATE buildings SET construction_time = NOW() at time zone 'utc' WHERE id = {0}", buildingID);
-                        using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                        {
-                            command.ExecuteNonQuery();
-                            id = 1;
-                        }
-                    }
-                    else
-                    {
-                        id = 2;
-                    }
-                }
-                connection.Close();
-            }
-            return id;
         }
 
         #endregion
 
         #region Units
 
-        private async static Task<List<Unit>> GetUnitsAsync(long account_id)
-        {
-            Task<List<Unit>> task = Task.Run(() =>
-            {
-                List<Unit> units = null;
-                units = Retry.Do(() => _GetUnitsAsync(account_id), TimeSpan.FromSeconds(0.1), 1, false);
-                if (units == null)
-                {
-                    units = new List<Unit>();
-                }
-                return units;
-            });
-            return await task;
-        }
-
-        private static List<Unit> _GetUnitsAsync(long account_id)
-        {
-            List<Unit> units = new List<Unit>();
-            using (NpgsqlConnection connection = GetDbConnection())
-            {
-                units = GetUnits(account_id, connection);
-                connection.Close();
-            }
-            return units;
-        }
-
-        private static List<Unit> GetUnits(long account, NpgsqlConnection connection)
-        {
-            List<Unit> data = new List<Unit>();
-            string query = String.Format("SELECT units.id, units.global_id, units.level, units.trained, units.ready, units.trained_time, server_units.health, server_units.train_time, server_units.housing, server_units.attack_range, server_units.attack_speed, server_units.move_speed, server_units.damage, server_units.move_type, server_units.target_priority, server_units.priority_multiplier FROM units LEFT JOIN server_units ON units.global_id = server_units.global_id AND units.level = server_units.level WHERE units.account_id = {0};", account);
-            using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-            {
-                using (NpgsqlDataReader reader = command.ExecuteReader())
-                {
-                    if (reader.HasRows)
-                    {
-                        while (reader.Read())
-                        {
-                            Unit unit = new Unit();
-                            unit.id = (UnitID)Enum.Parse(typeof(UnitID), reader["global_id"].ToString());
-                            long.TryParse(reader["id"].ToString(), out unit.databaseID);
-                            int.TryParse(reader["level"].ToString(), out unit.level);
-                            int.TryParse(reader["health"].ToString(), out unit.health);
-                            int.TryParse(reader["housing"].ToString(), out unit.hosing);
-                            int.TryParse(reader["train_time"].ToString(), out unit.trainTime);
-                            float.TryParse(reader["trained_time"].ToString(), out unit.trainedTime);
-
-                            float.TryParse(reader["damage"].ToString(), out unit.damage);
-                            float.TryParse(reader["attack_speed"].ToString(), out unit.attackSpeed);
-                            float.TryParse(reader["move_speed"].ToString(), out unit.moveSpeed);
-                            float.TryParse(reader["attack_range"].ToString(), out unit.attackRange);
-
-                            unit.movement = (UnitMoveType)Enum.Parse(typeof(UnitMoveType), reader["move_type"].ToString());
-                            unit.priority = (TargetPriority)Enum.Parse(typeof(TargetPriority), reader["target_priority"].ToString());
-                            float.TryParse(reader["priority_multiplier"].ToString(), out unit.priorityMultiplier);
-
-                            int isTrue = 0;
-                            int.TryParse(reader["trained"].ToString(), out isTrue);
-                            unit.trained = isTrue > 0;
-
-                            isTrue = 0;
-                            int.TryParse(reader["ready"].ToString(), out isTrue);
-                            unit.ready = isTrue > 0;
-                            data.Add(unit);
-                        }
-                    }
-                }
-            }
-            return data;
-        }
-
-        public async static void TrainUnit(int id, string globalID)
+        public static void TrainUnit(int id, string globalID)
         {
             Packet packet = new Packet();
             packet.Write((int)Terminal.RequestsID.TRAIN);
             long account_id = Server.clients[id].account;
-            int res = await TrainUnitAsync(account_id, globalID);
+            int res = Unit.Train(account_id, globalID);
             packet.Write(res);
             Sender.TCP_Send(id, packet);
-        }
-
-        private async static Task<int> TrainUnitAsync(long account_id, string globalID)
-        {
-            Task<int> task = Task.Run(() =>
-            {
-                return Retry.Do(() => _TrainUnitAsync(account_id, globalID), TimeSpan.FromSeconds(0.1), 1, false);
-            });
-            return await task;
-        }
-
-        private static int _TrainUnitAsync(long account_id, string globalID)
-        {
-            int response = 0;
-            using (NpgsqlConnection connection = GetDbConnection())
-            {
-                int level = 1;
-                Research research = GetResearch(connection, account_id, globalID, ResearchType.unit);
-                if (research != null)
-                {
-                    level = research.level;
-                }
-                ServerUnit unit = Unit.GetServerUnit(globalID, level);
-                if (unit != null)
-                {
-                    int capacity = 0;
-                    List<Building> barracks = Building.GetByGlobalID(BuildingID.barracks.ToString(), account_id);
-                    for (int i = 0; i < barracks.Count; i++)
-                    {
-                        capacity += barracks[i].capacity;
-                    }
-
-                    int occupied = 999;
-                    string query = String.Format("SELECT SUM(server_units.housing) AS occupied FROM units LEFT JOIN server_units ON units.global_id = server_units.global_id AND units.level = server_units.level WHERE units.account_id = {0} AND ready <= 0;", account_id);
-                    using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                    {
-                        using (NpgsqlDataReader reader = command.ExecuteReader())
-                        {
-                            if (reader.HasRows)
-                            {
-                                while (reader.Read())
-                                {
-                                    int.TryParse(reader["occupied"].ToString(), out occupied);
-                                }
-                            }
-                        }
-                    }
-
-                    if (capacity - occupied >= unit.housing)
-                    {
-                        if (Account.SpendResources(account_id, unit.requiredGold, unit.requiredElixir, unit.requiredGems, unit.requiredDarkElixir))
-                        {
-                            query = String.Format("INSERT INTO units (global_id, level, account_id) VALUES('{0}', {1}, {2})", globalID, level, account_id);
-                            using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                            {
-                                command.ExecuteNonQuery();
-                                response = 1;
-                            }
-                        }
-                        else
-                        {
-                            response = 2;
-                        }
-                    }
-                    else
-                    {
-                        response = 4;
-                    }
-                }
-                else
-                {
-                    response = 3;
-                }
-                connection.Close();
-            }
-            return response;
         }
         public async static void CancelTrainUnit(int id, long databaseID)
         {
@@ -2848,7 +2414,7 @@ namespace Memewars.RealtimeNetworking.Server
             using (NpgsqlConnection connection = GetDbConnection())
             {
                 int level = 1;
-                Research research = GetResearch(connection, account_id, globalID, ResearchType.spell);
+                Research research = Research.Get(account_id, globalID, ResearchType.spell);
                 if (research != null)
                 {
                     level = research.level;
@@ -3083,51 +2649,6 @@ namespace Memewars.RealtimeNetworking.Server
 
         #region Research
 
-        private static Research GetResearch(NpgsqlConnection connection, long account_id, string global_id, ResearchType type, bool createIfNotExist = false)
-        {
-            Research research = null;
-            string query = String.Format("SELECT id, level, researching, CASE WHEN researching > NOW() at time zone 'utc' THEN 1 ELSE 0 END AS is_researching FROM research WHERE account_id = {0} AND type = {1} AND global_id = '{2}';", account_id, (int)type, global_id);
-            using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-            {
-                using (NpgsqlDataReader reader = command.ExecuteReader())
-                {
-                    if (reader.HasRows)
-                    {
-                        while (reader.Read())
-                        {
-                            research = new Research();
-                            int is_researching = 0;
-                            int.TryParse(reader["is_researching"].ToString(), out is_researching);
-                            long.TryParse(reader["id"].ToString(), out research.id);
-                            int.TryParse(reader["level"].ToString(), out research.level);
-                            DateTime.TryParse(reader["researching"].ToString(), out research.end);
-                            research.researching = (is_researching == 1);
-                            if (research.researching)
-                            {
-                                research.level -= 1;
-                            }
-                            research.globalID = global_id;
-                            research.type = type;
-                        }
-                    }
-                }
-            }
-            if (createIfNotExist && research == null)
-            {
-                research = new Research();
-                query = String.Format("INSERT INTO research (account_id, type, global_id) VALUES({0}, {1}, '{2}') RETURNING id;", account_id, (int)type, global_id);
-                using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                {
-                    research.id = (long)command.ExecuteScalar();
-                }
-                research.globalID = global_id;
-                research.level = 1;
-                research.type = type;
-                research.researching = false;
-            }
-            return research;
-        }
-
         public async static void DoResearch(int id, ResearchType type, string global_id)
         {
             long account_id = Server.clients[id].account;
@@ -3160,7 +2681,7 @@ namespace Memewars.RealtimeNetworking.Server
             int response = 0;
             using (NpgsqlConnection connection = GetDbConnection())
             {
-                research = GetResearch(connection, account_id, global_id, type, true);
+                research = Research.Get(account_id, global_id, type, true);
                 if (research.researching)
                 {
                     response = 3;
@@ -3209,7 +2730,7 @@ namespace Memewars.RealtimeNetworking.Server
                         {
                             command.ExecuteNonQuery();
                         }
-                        research = GetResearch(connection, account_id, global_id, type);
+                        research = Research.Get(account_id, global_id, type);
                     }
                 }
                 connection.Close();

@@ -124,5 +124,86 @@ namespace Models {
             connection.Close();
             return unit;
         }
+    
+        public static List<Unit> GetUnits(long account)
+        {
+            List<Unit> data = new List<Unit>();
+            string query = String.Format("SELECT units.id, units.global_id, units.level, units.trained, units.ready, units.trained_time, server_units.health, server_units.train_time, server_units.housing, server_units.attack_range, server_units.attack_speed, server_units.move_speed, server_units.damage, server_units.move_type, server_units.target_priority, server_units.priority_multiplier FROM units LEFT JOIN server_units ON units.global_id = server_units.global_id AND units.level = server_units.level WHERE units.account_id = {0};", account);
+            var ret = Database.ExecuteForResults(query);
+            if (ret.Count > 0)
+            {
+                foreach(var res in ret)
+                {
+                    Unit unit = new()
+                    {
+                        id = (UnitID)Enum.Parse(typeof(UnitID), res["global_id"])
+                    };
+                    _ = long.TryParse(res["id"], out unit.databaseID);
+                    _ = int.TryParse(res["level"], out unit.level);
+                    _ = int.TryParse(res["health"], out unit.health);
+                    _ = int.TryParse(res["housing"], out unit.hosing);
+                    _ = int.TryParse(res["train_time"], out unit.trainTime);
+                    _ = float.TryParse(res["trained_time"], out unit.trainedTime);
+
+                    _ = float.TryParse(res["damage"], out unit.damage);
+                    _ = float.TryParse(res["attack_speed"], out unit.attackSpeed);
+                    _ = float.TryParse(res["move_speed"], out unit.moveSpeed);
+                    _ = float.TryParse(res["attack_range"], out unit.attackRange);
+
+                    unit.movement = (UnitMoveType)Enum.Parse(typeof(UnitMoveType), res["move_type"]);
+                    unit.priority = (TargetPriority)Enum.Parse(typeof(TargetPriority), res["target_priority"]);
+                    _ = float.TryParse(res["priority_multiplier"], out unit.priorityMultiplier);
+
+                    _ = int.TryParse(res["trained"], out int isTrue);
+                    unit.trained = isTrue > 0;
+                    _ = int.TryParse(res["ready"], out isTrue);
+                    unit.ready = isTrue > 0;
+                    data.Add(unit);
+                }
+            }
+            return data;
+        }
+    
+        public static int Train(long account_id, string globalID)
+        {
+            int response = 0;
+            int level = 1;
+            Research research = Research.Get(account_id, globalID, ResearchType.unit);
+            if (research != null)
+            {
+                level = research.level;
+            }
+
+            ServerUnit unit = GetServerUnit(globalID, level);
+            if(unit == null) {
+                response = 3;
+                return response;
+            }
+            
+            int capacity = Building.GetCapacityByGlobalID(BuildingID.barracks.ToString(), account_id);
+            int occupied = 999;
+            string query = String.Format("SELECT SUM(server_units.housing) AS occupied FROM units LEFT JOIN server_units ON units.global_id = server_units.global_id AND units.level = server_units.level WHERE units.account_id = {0} AND ready <= 0;", account_id);
+            var ret = Database.ExecuteForSingleResult(query);
+            if (ret != null)
+            {
+                _ = int.TryParse(ret["occupied"].ToString(), out occupied);
+            }
+
+            if (capacity - occupied < unit.housing)
+            {
+                response = 4;
+                return response;
+            }
+            if (!Account.SpendResources(account_id, unit.requiredGold, unit.requiredElixir, unit.requiredGems, unit.requiredDarkElixir))
+            {
+                response = 2;
+                return response;
+            }
+
+            query = String.Format("INSERT INTO units (global_id, level, account_id) VALUES('{0}', {1}, {2})", globalID, level, account_id);
+            Database.ExecuteNonQuery(query);
+            response = 1;
+            return response;
+        }
     }
 }

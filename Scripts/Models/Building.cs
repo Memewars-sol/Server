@@ -154,6 +154,7 @@ namespace Models {
             }
             return buildings;
         }
+        
         private static List<Building> GetBuildings(long account)
         {
             List<Building> data = new List<Building>();
@@ -271,7 +272,6 @@ namespace Models {
             return -1;
         }
 
-
         public static Building Get(long id)
         {
             Building building = null;
@@ -287,6 +287,7 @@ namespace Models {
             }
             return building;
         }
+
         public static List<Building> GetByGlobalID(string globalID, long account)
         {
             List<Building> buildings = new List<Building>();
@@ -306,6 +307,12 @@ namespace Models {
                 }
             }
             return buildings;
+        }
+
+        public static int GetCapacityByGlobalID(string globalID, long account)
+        {
+            string query = String.Format("SELECT SUM(server_buildings.capacity) FROM buildings LEFT JOIN server_buildings ON buildings.global_id = server_buildings.global_id AND buildings.level = server_buildings.level WHERE buildings.global_id = '{0}' AND buildings.account_id = {1};", globalID, account);
+            return (int)Database.ExecuteScalar(query);
         }
 
         public static int? GetBuildTime(string globalId, int level) {
@@ -450,6 +457,168 @@ namespace Models {
             Database.ExecuteNonQuery(query);
             response = 1;
             return response;
+        }
+
+        public static int Replace(long account_id, long building_id, int x, int y, int layout)
+        {
+            int response = 0;
+            List<Building> buildings = Account.GetBuildings(account_id);
+            Building building = buildings.Where(x => x.databaseID == building_id).FirstOrDefault();
+            if(building == null) {
+                return response;
+            }
+
+            if (x < 0 || y < 0 || x + building.columns > Data.gridSize || y + building.rows > Data.gridSize)
+            {
+                response = 2;
+                return response;
+            }
+            
+            for (int i = 0; i < buildings.Count; i++)
+            {
+                if (buildings[i].databaseID != building.databaseID)
+                {
+                    int bX = (layout == 2) ? buildings[i].warX : buildings[i].x;
+                    int bY = (layout == 2) ? buildings[i].warY : buildings[i].y;
+                    Rectangle rect1 = new Rectangle(bX, bY, buildings[i].columns, buildings[i].rows);
+                    Rectangle rect2 = new Rectangle(x, y, building.columns, building.rows);
+
+                    // intersected
+                    if (rect2.IntersectsWith(rect1))
+                    {
+                        response = 2;
+                        return response;
+                    }
+                }
+            }
+
+            string query = "";
+            bool IsWarLayout = layout == (int)BuildingLayoutType.war;
+            if (IsWarLayout)
+            {
+                long war_id = 0;
+                query = String.Format("SELECT war_id FROM accounts WHERE id = {0};", account_id);
+                var ret = Database.ExecuteForSingleResult(query);
+                if (ret != null)
+                {
+                    _ = long.TryParse(ret["war_id"], out war_id);
+                }
+                
+                if(war_id == 0) {
+                    response = 3;
+                    return response;
+                }
+                
+                int war_stage = 0;
+                query = String.Format("SELECT stage FROM clan_wars WHERE id = {0};", war_id);
+                ret = Database.ExecuteForSingleResult(query);
+                if (ret != null)
+                {
+                    _ = int.TryParse(ret["stage"], out war_stage);
+                }
+
+                if (war_stage != 1)
+                {
+                    response = 3;
+                    return response;
+                    
+                }
+                query = String.Format("UPDATE buildings SET x_war = {0}, y_war = {1} WHERE id = {2};", x, y, building_id);
+                Database.ExecuteNonQuery(query);
+                response = 1;
+                return response;
+            }
+
+            query = String.Format("UPDATE buildings SET x_position = {0}, y_position = {1} WHERE id = {2};", x, y, building_id);
+            Database.ExecuteNonQuery(query);
+            response = 1;
+            return response;
+        }
+
+        public static int Upgrade(long account_id, long buildingID, int level, string globalID)
+        {
+            string query = String.Format("SELECT req_gold, req_elixir, req_dark_elixir, req_gems, build_time FROM server_buildings WHERE global_id = '{0}' AND level = {1};", globalID, globalID == BuildingID.obstacle.ToString() ? level : level + 1);
+            var ret = Database.ExecuteForSingleResult(query);
+            int response;
+            if (ret != null)
+            {
+                response = 3;
+                return response;
+            }
+
+            int time = int.Parse(ret["build_time"]);
+            int reqGold = int.Parse(ret["req_gold"]);
+            int reqElixir = int.Parse(ret["req_elixir"]);
+            int reqDarkElixir = int.Parse(ret["req_dark_elixir"]);
+            int reqGems = int.Parse(ret["req_gems"]);
+
+            int buildersCount = Account.GetBuildingCount(account_id, "buildershut");
+            int constructingCount = Account.GetBuildingConstructionCount(account_id);
+            if (time > 0 && buildersCount <= constructingCount)
+            {
+                response = 5;
+                return response;
+            }
+
+            if(globalID != BuildingID.obstacle.ToString())
+            {
+                Building townHall = Building.GetByGlobalID("townhall", account_id)[0];
+                if (globalID != "townhall")
+                {
+                    BuildingCount limits = Data.GetBuildingLimits(townHall.level, globalID);
+                    int haveCount = Account.GetBuildingCount(account_id, globalID);
+                    if (haveCount >= limits.count && level >= limits.maxLevel)
+                    {
+                        response = 6;
+                        return response;
+                    }
+                }
+            }
+
+            if (!Account.SpendResources(account_id, reqGold, reqElixir, reqGems, reqDarkElixir))
+            {
+                response = 2;
+                return response;
+            }
+
+            query = String.Format("UPDATE buildings SET is_constructing = 1, construction_time =  NOW() at time zone 'utc' + INTERVAL '{0} SECOND', construction_build_time = {1} WHERE id = {2};", time, time, buildingID);
+            Database.ExecuteNonQuery(query);
+            response = 1;
+            return response;
+        }
+
+
+        public static int InstantBuild(long account_id, long buildingID, int level, string globalID)
+        {
+            int id = 0;
+            int time = 0;
+            string query = String.Format("SELECT construction_time, NOW() at time zone 'utc' AS now_time FROM buildings WHERE id = {0} AND account_id = {1} AND is_constructing > 0;", buildingID, account_id);
+            var ret = Database.ExecuteForSingleResult(query);
+            if (ret != null)
+            {
+                DateTime target = DateTime.Parse(ret["construction_time"]);
+                DateTime now = DateTime.Parse(ret["now_time"]);
+                if (target > now)
+                {
+                    time = (int)(target - now).TotalSeconds;
+                }
+            }
+            if(time <= 0) {
+                return id;
+            }
+            
+
+            int requiredGems = Data.GetInstantBuildRequiredGems(time);
+            if (!Account.SpendResources(account_id, 0, 0, requiredGems, 0))
+            {
+                id = 2;
+                return id;
+            }
+
+            query = String.Format("UPDATE buildings SET construction_time = NOW() at time zone 'utc' WHERE id = {0}", buildingID);
+            Database.ExecuteNonQuery(query);
+            id = 1;
+            return id;
         }
 
 

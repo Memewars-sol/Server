@@ -49,6 +49,39 @@ namespace Models {
             return list;
         }
 
+        public static Research Get(long account_id, string global_id, ResearchType type, bool createIfNotExist = false)
+        {
+            Research research = null;
+            string query = String.Format("SELECT id, level, researching, CASE WHEN researching > NOW() at time zone 'utc' THEN 1 ELSE 0 END AS is_researching FROM research WHERE account_id = {0} AND type = {1} AND global_id = '{2}';", account_id, (int)type, global_id);
+            var ret = Database.ExecuteForSingleResult(query);
+            if (ret != null)
+            {
+                research = new Research();
+                _ = int.TryParse(ret["is_researching"], out int is_researching);
+                _ = long.TryParse(ret["id"], out research.id);
+                _ = int.TryParse(ret["level"], out research.level);
+                _ = DateTime.TryParse(ret["researching"], out research.end);
+                research.researching = is_researching == 1;
+                if (research.researching)
+                {
+                    research.level -= 1;
+                }
+                research.globalID = global_id;
+                research.type = type;
+            }
+            
+            if (createIfNotExist && research == null)
+            {
+                research = new Research();
+                query = String.Format("INSERT INTO research (account_id, type, global_id) VALUES({0}, {1}, '{2}') RETURNING id;", account_id, (int)type, global_id);
+                research.id = (long)Database.ExecuteScalar(query);
+                research.globalID = global_id;
+                research.level = 1;
+                research.type = type;
+                research.researching = false;
+            }
+            return research;
+        }
     }
 
 }
