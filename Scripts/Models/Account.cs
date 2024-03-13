@@ -370,7 +370,7 @@ namespace Models {
             float haveGems = 0;
             float haveDarkElixir = 0;
 
-            if(gold == 0 && elixir == 0 && darkElixir == 0) {
+            if(gold == 0 && elixir == 0 && darkElixir == 0 && gems == 0) {
                 return true;
             }
 
@@ -411,7 +411,7 @@ namespace Models {
                 return false;
             }
             
-            if (gold == 0 && elixir == 0 && darkElixir == 0) {
+            if (gold == 0 && elixir == 0 && darkElixir == 0 && gems == 0) {
                 return false;
             }
 
@@ -482,7 +482,9 @@ namespace Models {
                 return false;
             }
 
-            Database.ExecuteNonQuery(spendQuery);
+            if(!string.IsNullOrEmpty(spendQuery)) {
+                Database.ExecuteNonQuery(spendQuery);
+            }
 
             // update gems
             if (gems > 0)

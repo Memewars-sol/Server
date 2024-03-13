@@ -311,7 +311,7 @@ namespace Models {
 
         public static int GetCapacityByGlobalID(string globalID, long account)
         {
-            string query = String.Format("SELECT SUM(server_buildings.capacity) FROM buildings LEFT JOIN server_buildings ON buildings.global_id = server_buildings.global_id AND buildings.level = server_buildings.level WHERE buildings.global_id = '{0}' AND buildings.account_id = {1};", globalID, account);
+            string query = String.Format("SELECT SUM(server_buildings.capacity)::int FROM buildings LEFT JOIN server_buildings ON buildings.global_id = server_buildings.global_id AND buildings.level = server_buildings.level WHERE buildings.global_id = '{0}' AND buildings.account_id = {1};", globalID, account);
             return (int)Database.ExecuteScalar(query);
         }
 
@@ -540,7 +540,7 @@ namespace Models {
             string query = String.Format("SELECT req_gold, req_elixir, req_dark_elixir, req_gems, build_time FROM server_buildings WHERE global_id = '{0}' AND level = {1};", globalID, globalID == BuildingID.obstacle.ToString() ? level : level + 1);
             var ret = Database.ExecuteForSingleResult(query);
             int response;
-            if (ret != null)
+            if (ret == null)
             {
                 response = 3;
                 return response;
