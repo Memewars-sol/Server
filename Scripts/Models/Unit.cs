@@ -125,6 +125,42 @@ namespace Models {
             return unit;
         }
     
+        public static Unit Get(long database_id, long account_id)
+        {
+            Unit unit = null;
+            string query = String.Format("SELECT units.id, units.global_id, units.level, units.trained, units.ready, units.trained_time, server_units.health, server_units.train_time, server_units.housing, server_units.attack_range, server_units.attack_speed, server_units.move_speed, server_units.damage, server_units.move_type, server_units.target_priority, server_units.priority_multiplier FROM units LEFT JOIN server_units ON units.global_id = server_units.global_id AND units.level = server_units.level WHERE units.id = {0} AND units.account_id = {1};", database_id, account_id);
+            var ret = Database.ExecuteForSingleResult(query);
+            if (ret != null)
+            {
+                Unit unit1 = new()
+                {
+                    id = (UnitID)Enum.Parse(typeof(UnitID), ret["global_id"])
+                };
+                unit = unit1;
+                _ = long.TryParse(ret["id"], out unit.databaseID);
+                _ = int.TryParse(ret["level"], out unit.level);
+                _ = int.TryParse(ret["health"], out unit.health);
+                _ = int.TryParse(ret["housing"], out unit.hosing);
+                _ = int.TryParse(ret["train_time"], out unit.trainTime);
+                _ = float.TryParse(ret["trained_time"], out unit.trainedTime);
+
+                _ = float.TryParse(ret["damage"], out unit.damage);
+                _ = float.TryParse(ret["attack_speed"], out unit.attackSpeed);
+                _ = float.TryParse(ret["move_speed"], out unit.moveSpeed);
+                _ = float.TryParse(ret["attack_range"], out unit.attackRange);
+
+                unit.movement = (UnitMoveType)Enum.Parse(typeof(UnitMoveType), ret["move_type"]);
+                unit.priority = (TargetPriority)Enum.Parse(typeof(TargetPriority), ret["target_priority"]);
+                _ = float.TryParse(ret["priority_multiplier"], out unit.priorityMultiplier);
+
+                _ = int.TryParse(ret["trained"], out int isTrue);
+                unit.trained = isTrue > 0;
+                _ = int.TryParse(ret["ready"], out isTrue);
+                unit.ready = isTrue > 0;
+            }
+            return unit;
+        }
+
         public static List<Unit> GetUnits(long account)
         {
             List<Unit> data = new List<Unit>();
@@ -205,5 +241,19 @@ namespace Models {
             response = 1;
             return response;
         }
+    
+        public static int CancelTrain(long account_id, long databaseID)
+        {
+            string query = String.Format("DELETE FROM units WHERE id = {0} AND account_id = {1} AND ready <= 0", databaseID, account_id);
+            Database.ExecuteNonQuery(query);
+            return 1;
+        }
+        
+        public static void Delete(long id)
+        {
+            string query = String.Format("DELETE FROM units WHERE id = {0};", id);
+            Database.ExecuteNonQuery(query);
+        }
+
     }
 }

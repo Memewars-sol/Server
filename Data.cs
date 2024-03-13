@@ -331,64 +331,6 @@ namespace Memewars.RealtimeNetworking.Server
             return (win, lose);
         }
 
-        public class BattleFrame
-        {
-            public int frame = 0;
-            public List<BattleFrameUnit> units = new List<BattleFrameUnit>();
-            public List<BattleFrameSpell> spells = new List<BattleFrameSpell>();
-        }
-
-        public class BattleReport
-        {
-            public long attacker = 0;
-            public long defender = 0;
-            public int totalFrames = 0;
-            public BattleType type = BattleType.normal;
-            public List<Building> buildings = new List<Building>();
-            public List<BattleFrame> frames = new List<BattleFrame>();
-        }
-
-        public class BattleReportItem
-        {
-            public long id = 0;
-            public long attacker = 0;
-            public long defender = 0;
-            public string username = "";
-            public DateTime time;
-            public int stars = 0;
-            public int trophies = 0;
-            public int gold = 0;
-            public int elixir = 0;
-            public int dark = 0;
-            public bool seen = false;
-            public bool hasReply = false;
-        }
-
-        public class BattleFrameUnit
-        {
-            public long id = 0;
-            public int x = 0;
-            public int y = 0;
-            public Unit unit = null;
-        }
-
-        public class BattleFrameSpell
-        {
-            public long id = 0;
-            public int x = 0;
-            public int y = 0;
-            public Spell spell = null;
-        }
-
-        public class BattleData
-        {
-            public Battle battle = null;
-            public BattleType type = BattleType.normal;
-            public List<Building> buildings = new List<Building>();
-            public List<BattleFrame> savedFrames = new List<BattleFrame>();
-            public List<BattleFrame> frames = new List<BattleFrame>();
-        }
-
         public class OpponentData
         {
             public long id = 0;

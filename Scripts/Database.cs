@@ -215,7 +215,7 @@ namespace Memewars.RealtimeNetworking.Server
         public async static void SyncPlayerData(int id)
         {
             long account_id = Server.clients[id].account;
-            Player player = await GetPlayerDataAsync(account_id);
+            Player player = Account.Get(account_id);
             Packet packet = new Packet();
             packet.Write((int)Terminal.RequestsID.SYNC);
             if (player == null)
@@ -235,15 +235,6 @@ namespace Memewars.RealtimeNetworking.Server
             packet.Write(playerBytes.Length);
             packet.Write(playerBytes);
             Sender.TCP_Send(id, packet);
-        }
-
-        private async static Task<Player> GetPlayerDataAsync(long id)
-        {
-            Task<Player> task = Task.Run(() =>
-            {
-                return Retry.Do(() => Account.Get(id), TimeSpan.FromSeconds(0.1), 1, false);
-            });
-            return await task;
         }
 
         #endregion
@@ -838,12 +829,12 @@ namespace Memewars.RealtimeNetworking.Server
                         {
                             for (int u = 0; u < battles[i].frames[0].units.Count; u++)
                             {
-                                battles[i].frames[0].units[u].unit = GetUnit(connection, battles[i].frames[0].units[u].id, battles[i].battle.attacker);
+                                battles[i].frames[0].units[u].unit = Unit.Get(battles[i].frames[0].units[u].id, battles[i].battle.attacker);
                                 if (battles[i].frames[0].units[u].unit != null)
                                 {
                                     if (battles[i].battle.CanAddUnit(battles[i].frames[0].units[u].x, battles[i].frames[0].units[u].y))
                                     {
-                                        DeleteUnit(battles[i].frames[0].units[u].id, connection);
+                                        Unit.Delete(battles[i].frames[0].units[u].id);
                                         battles[i].battle.AddUnit(battles[i].frames[0].units[u].unit, battles[i].frames[0].units[u].x, battles[i].frames[0].units[u].y);
                                     }
                                 }
@@ -960,14 +951,14 @@ namespace Memewars.RealtimeNetworking.Server
                         }
                     }
                     
-                    Data.BattleReport battleReport = new Data.BattleReport();
+                    BattleReport battleReport = new BattleReport();
                     battleReport.attacker = attacker_id;
                     battleReport.defender = defender_id;
                     battleReport.type = battles[i].type;
                     battleReport.totalFrames = battles[i].battle.frameCount;
                     battleReport.buildings = battles[i].buildings;
                     battleReport.frames = battles[i].savedFrames;
-                    byte[] reply = Data.Compress(Data.Serialize<Data.BattleReport>(battleReport));
+                    byte[] reply = Data.Compress(Data.Serialize<BattleReport>(battleReport));
                     var looted = battles[i].battle.GetlootedResources();
                     int stars = battles[i].battle.stars;
                     int unitsDeployed = battles[i].battle.unitsDeployed;
@@ -1274,41 +1265,16 @@ namespace Memewars.RealtimeNetworking.Server
             packet.Write(res);
             Sender.TCP_Send(id, packet);
         }
-        public async static void CancelTrainUnit(int id, long databaseID)
+        public static void CancelTrainUnit(int id, long databaseID)
         {
             Packet packet = new Packet();
             packet.Write((int)Terminal.RequestsID.CANCELTRAIN);
             long account_id = Server.clients[id].account;
-            int res = await CancelTrainUnitAsync(account_id, databaseID);
+            int res = Unit.CancelTrain(account_id, databaseID);
             packet.Write(res);
             Sender.TCP_Send(id, packet);
         }
-
-        private async static Task<int> CancelTrainUnitAsync(long account_id, long databaseID)
-        {
-            Task<int> task = Task.Run(() =>
-            {
-                return Retry.Do(() => _CancelTrainUnitAsync(account_id, databaseID), TimeSpan.FromSeconds(0.1), 10, false);
-            });
-            return await task;
-        }
-
-        private static int _CancelTrainUnitAsync(long account_id, long databaseID)
-        {
-            int id = 0;
-            using (NpgsqlConnection connection = GetDbConnection())
-            {
-                string query = String.Format("DELETE FROM units WHERE id = {0} AND account_id = {1} AND ready <= 0", databaseID, account_id);
-                using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                {
-                    command.ExecuteNonQuery();
-                    id = 1;
-                }
-                connection.Close();
-            }
-            return id;
-        }
-
+        
         public static void DeleteUnit(long id, NpgsqlConnection connection)
         {
             string query = String.Format("DELETE FROM units WHERE id = {0};", id);
@@ -1318,167 +1284,69 @@ namespace Memewars.RealtimeNetworking.Server
             }
         }
 
-        private static Unit GetUnit(NpgsqlConnection connection, long database_id, long account_id)
-        {
-            Unit unit = null;
-            string query = String.Format("SELECT units.id, units.global_id, units.level, units.trained, units.ready, units.trained_time, server_units.health, server_units.train_time, server_units.housing, server_units.attack_range, server_units.attack_speed, server_units.move_speed, server_units.damage, server_units.move_type, server_units.target_priority, server_units.priority_multiplier FROM units LEFT JOIN server_units ON units.global_id = server_units.global_id AND units.level = server_units.level WHERE units.id = {0} AND units.account_id = {1};", database_id, account_id);
-            using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-            {
-                using (NpgsqlDataReader reader = command.ExecuteReader())
-                {
-                    if (reader.HasRows)
-                    {
-                        while (reader.Read())
-                        {
-                            unit = new Unit();
-                            unit.id = (UnitID)Enum.Parse(typeof(UnitID), reader["global_id"].ToString());
-                            long.TryParse(reader["id"].ToString(), out unit.databaseID);
-                            int.TryParse(reader["level"].ToString(), out unit.level);
-                            int.TryParse(reader["health"].ToString(), out unit.health);
-                            int.TryParse(reader["housing"].ToString(), out unit.hosing);
-                            int.TryParse(reader["train_time"].ToString(), out unit.trainTime);
-                            float.TryParse(reader["trained_time"].ToString(), out unit.trainedTime);
-
-                            float.TryParse(reader["damage"].ToString(), out unit.damage);
-                            float.TryParse(reader["attack_speed"].ToString(), out unit.attackSpeed);
-                            float.TryParse(reader["move_speed"].ToString(), out unit.moveSpeed);
-                            float.TryParse(reader["attack_range"].ToString(), out unit.attackRange);
-
-                            unit.movement = (UnitMoveType)Enum.Parse(typeof(UnitMoveType), reader["move_type"].ToString());
-                            unit.priority = (TargetPriority)Enum.Parse(typeof(TargetPriority), reader["target_priority"].ToString());
-                            float.TryParse(reader["priority_multiplier"].ToString(), out unit.priorityMultiplier);
-
-                            int isTrue = 0;
-                            int.TryParse(reader["trained"].ToString(), out isTrue);
-                            unit.trained = isTrue > 0;
-
-                            isTrue = 0;
-                            int.TryParse(reader["ready"].ToString(), out isTrue);
-                            unit.ready = isTrue > 0;
-                        }
-                    }
-                }
-            }
-            return unit;
-        }
-
         #endregion
 
         #region Battle
 
-        private static List<Data.BattleData> battles = new List<Data.BattleData>();
+        private static List<BattleData> battles = new List<BattleData>();
 
         public async static void FindBattleTarget(int id)
         {
             long account_id = Server.clients[id].account;
-            long target = await FindBattleTargetAsync(account_id);
+            long target = Battle.FindTarget(account_id);
             Packet packet = new Packet();
             packet.Write((int)Terminal.RequestsID.BATTLEFIND);
-            if (target > 0)
-            {
-                Data.OpponentData opponent = new Data.OpponentData();
-                opponent.id = target;
-                opponent.data = await GetPlayerDataAsync(target);
-                if (opponent.data != null)
-                {
-                    opponent.buildings = Account.GetBuildings(target);
-                    if (opponent.buildings != null)
-                    {
-                        opponent.buildings = await SetBuildingsPercentAsync(opponent.buildings, BattleType.normal);
-                        if (opponent.buildings != null)
-                        {
-                            packet.Write(target);
-                            string data = await Data.SerializeAsync<Data.OpponentData>(opponent);
-                            byte[] bytes = await Data.CompressAsync(data);
-                            packet.Write(bytes.Length);
-                            packet.Write(bytes);
-                        }
-                        else
-                        {
-                            target = 0;
-                            packet.Write(target);
-                        }
-                    }
-                    else
-                    {
-                        target = 0;
-                        packet.Write(target);
-                    }
-                }
-                else
-                {
-                    target = 0;
-                    packet.Write(target);
-                }
+            if (target <= 0) {
+                target = 0;
+                packet.Write(target);
+                Sender.TCP_Send(id, packet);
+                return;
             }
-            else
+
+            Data.OpponentData opponent = new()
+            {
+                id = target,
+                data = Account.Get(target)
+            };
+            
+            if (opponent.data == null)
             {
                 target = 0;
                 packet.Write(target);
+                Sender.TCP_Send(id, packet);
+                return;
             }
+
+            opponent.buildings = Account.GetBuildings(target);
+            if (opponent.buildings == null)
+            {
+                target = 0;
+                packet.Write(target);
+                Sender.TCP_Send(id, packet);
+                return;
+            }
+            opponent.buildings = await SetBuildingsPercentAsync(opponent.buildings, BattleType.normal);
+            if (opponent.buildings == null)
+            {
+                target = 0;
+                packet.Write(target);
+                Sender.TCP_Send(id, packet);
+                return;
+            }
+
+            packet.Write(target);
+            string data = await Data.SerializeAsync(opponent);
+            byte[] bytes = await Data.CompressAsync(data);
+            packet.Write(bytes.Length);
+            packet.Write(bytes);
             Sender.TCP_Send(id, packet);
-        }
-
-        private async static Task<long> FindBattleTargetAsync(long account_id)
-        {
-            Task<long> task = Task.Run(() =>
-            {
-                return Retry.Do(() => _FindBattleTargetAsync(account_id), TimeSpan.FromSeconds(0.1), 1, false);
-            });
-            return await task;
-        }
-
-        private static long _FindBattleTargetAsync(long account_id)
-        {
-            long id = 0;
-            using (NpgsqlConnection connection = GetDbConnection())
-            {
-                string query = String.Format("SELECT id FROM accounts WHERE id <> {0} AND shield < NOW() at time zone 'utc' AND is_online <= 0 ORDER BY RANDOM() LIMIT 1;", account_id);
-                using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                {
-                    using (NpgsqlDataReader reader = command.ExecuteReader())
-                    {
-                        if (reader.HasRows)
-                        {
-                            while (reader.Read())
-                            {
-                                long.TryParse(reader["id"].ToString(), out id);
-                            }
-                        }
-                    }
-                }
-                if (id > 0)
-                {
-                    int townHallLevel = 1;
-                    query = String.Format("SELECT level FROM buildings WHERE account_id = {0} AND global_id = '{1}';", account_id, BuildingID.townhall.ToString());
-                    using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                    {
-                        using (NpgsqlDataReader reader = command.ExecuteReader())
-                        {
-                            if (reader.HasRows)
-                            {
-                                while (reader.Read())
-                                {
-                                    int.TryParse(reader["level"].ToString(), out townHallLevel);
-                                }
-                            }
-                        }
-                    }
-                    if (Account.SpendResources(account_id, Data.GetBattleSearchCost(townHallLevel), 0, 0, 0) == false)
-                    {
-                        id = 0;
-                    }
-                }
-                connection.Close();
-            }
-            return id;
         }
 
         public async static void AddBattleFrame(int id, byte[] data)
         {
             long account_id = Server.clients[id].account;
             string frameData = await Data.DecompressAsync(data);
-            Data.BattleFrame frame = await Data.DesrializeAsync<Data.BattleFrame>(frameData);
+            BattleFrame frame = await Data.DesrializeAsync<BattleFrame>(frameData);
             for (int i = 0; i < battles.Count; i++)
             {
                 if (battles[i].battle.attacker == account_id)
@@ -1609,10 +1477,10 @@ namespace Memewars.RealtimeNetworking.Server
                 {
                     Account.RemoveShield(account_id);
                 }
-                Player attackerData = await GetPlayerDataAsync(account_id);
-                Player defenderData = await GetPlayerDataAsync(defender);
+                Player attackerData = Account.Get(account_id);
+                Player defenderData = Account.Get(defender);
                 var trophies = Data.GetBattleTrophies(attackerData.trophies, defenderData.trophies);
-                Data.BattleData battle = new Data.BattleData();
+                BattleData battle = new BattleData();
                 battle.type = type;
                 battle.battle = new Battle();
                 // battle.buildings = Data.CloneClass<List<Battle.Building>>(buildings);
@@ -1637,35 +1505,34 @@ namespace Memewars.RealtimeNetworking.Server
         {
             Packet packet = new Packet();
             packet.Write((int)Terminal.RequestsID.SCOUT);
-            Player player = await GetPlayerDataAsync(target);
-            if (player != null)
-            {
-                packet.Write(1);
-                packet.Write(type);
-                player.buildings = Account.GetBuildings(target);
-                string data = await Data.SerializeAsync<Player>(player);
-                byte[] bytes = await Data.CompressAsync(data);
-                packet.Write(bytes.Length);
-                packet.Write(bytes);
-            }
-            else
+            Player player = Account.Get(target);
+            if (player == null)
             {
                 packet.Write(0);
                 packet.Write(type);
+                Sender.TCP_Send(id, packet);
+                return;
             }
+            packet.Write(1);
+            packet.Write(type);
+            player.buildings = Account.GetBuildings(target);
+            string data = await Data.SerializeAsync<Player>(player);
+            byte[] bytes = await Data.CompressAsync(data);
+            packet.Write(bytes.Length);
+            packet.Write(bytes);
             Sender.TCP_Send(id, packet);
         }
 
         public async static void GetBattlesList(int id)
         {
             long account_id = Server.clients[id].account;
-            List<Data.BattleReportItem> reports = await GetBattlesListAsync(account_id);
+            List<BattleReportItem> reports = await GetBattlesListAsync(account_id);
             Packet packet = new Packet();
             packet.Write((int)Terminal.RequestsID.BATTLEREPORTS);
             if(reports != null && reports.Count > 0)
             {
                 packet.Write(1);
-                string data = await Data.SerializeAsync<List<Data.BattleReportItem>>(reports);
+                string data = await Data.SerializeAsync<List<BattleReportItem>>(reports);
                 byte[] bytes = await Data.CompressAsync(data);
                 packet.Write(bytes.Length);
                 packet.Write(bytes);
@@ -1677,18 +1544,18 @@ namespace Memewars.RealtimeNetworking.Server
             Sender.TCP_Send(id, packet);
         }
 
-        private async static Task<List<Data.BattleReportItem>> GetBattlesListAsync(long account_id)
+        private async static Task<List<BattleReportItem>> GetBattlesListAsync(long account_id)
         {
-            Task<List<Data.BattleReportItem>> task = Task.Run(() =>
+            Task<List<BattleReportItem>> task = Task.Run(() =>
             {
                 return Retry.Do(() => _GetBattlesListAsync(account_id), TimeSpan.FromSeconds(0.1), 1, false);
             });
             return await task;
         }
 
-        private static List<Data.BattleReportItem> _GetBattlesListAsync(long account_id)
+        private static List<BattleReportItem> _GetBattlesListAsync(long account_id)
         {
-            List<Data.BattleReportItem> reports = new List<Data.BattleReportItem>();
+            List<BattleReportItem> reports = new List<BattleReportItem>();
             using (NpgsqlConnection connection = GetDbConnection())
             {
                 string query = String.Format("SELECT battles.id, battles.attacker_id, battles.defender_id, battles.end_time, battles.stars, battles.trophies, battles.looted_gold, battles.looted_elixir, battles.looted_dark_elixir, battles.seen, battles.replay_path, accounts.name FROM battles LEFT JOIN accounts ON accounts.id = (battles.attacker_id + battles.defender_id - {0}) WHERE battles.attacker_id = {0} OR battles.defender_id = {0} ORDER BY battles.end_time DESC LIMIT 20", account_id);
@@ -1700,7 +1567,7 @@ namespace Memewars.RealtimeNetworking.Server
                         {
                             while (reader.Read())
                             {
-                                Data.BattleReportItem report = new Data.BattleReportItem();
+                                BattleReportItem report = new BattleReportItem();
                                 long.TryParse(reader["id"].ToString(), out report.id);
                                 long.TryParse(reader["attacker_id"].ToString(), out report.attacker);
                                 long.TryParse(reader["defender_id"].ToString(), out report.defender);
@@ -1733,7 +1600,7 @@ namespace Memewars.RealtimeNetworking.Server
         public async static void GetBattleReport(int id, long report_id)
         {
             long account_id = Server.clients[id].account;
-            Data.BattleReport report = await GetBattleReportAsync(account_id, report_id);
+            BattleReport report = Battle.GetBattleReport(report_id);
             Packet packet = new Packet();
             packet.Write((int)Terminal.RequestsID.BATTLEREPORT);
             if(report == null)
@@ -1743,56 +1610,17 @@ namespace Memewars.RealtimeNetworking.Server
             else
             {
                 packet.Write(1);
-                string data = await Data.SerializeAsync<Data.BattleReport>(report);
+                string data = await Data.SerializeAsync<BattleReport>(report);
                 byte[] bytes = await Data.CompressAsync(data);
                 packet.Write(bytes.Length);
                 packet.Write(bytes);
-                Player player = await GetPlayerDataAsync(account_id == report.attacker ? report.defender : report.attacker);
+                Player player = Account.Get(account_id == report.attacker ? report.defender : report.attacker);
                 data = await Data.SerializeAsync<Player>(player);
                 bytes = await Data.CompressAsync(data);
                 packet.Write(bytes.Length);
                 packet.Write(bytes);
             }
             Sender.TCP_Send(id, packet);
-        }
-
-        private async static Task<Data.BattleReport> GetBattleReportAsync(long account_id, long report_id)
-        {
-            Task<Data.BattleReport> task = Task.Run(() =>
-            {
-                return Retry.Do(() => _GetBattleReportAsync(account_id, report_id), TimeSpan.FromSeconds(0.1), 1, false);
-            });
-            return await task;
-        }
-
-        private static Data.BattleReport _GetBattleReportAsync(long account_id, long report_id)
-        {
-            Data.BattleReport report = null;
-            string path = "";
-            using (NpgsqlConnection connection = GetDbConnection())
-            {
-                string query = String.Format("SELECT replay_path FROM battles WHERE id = {0}", report_id);
-                using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                {
-                    using (NpgsqlDataReader reader = command.ExecuteReader())
-                    {
-                        if (reader.HasRows)
-                        {
-                            while (reader.Read())
-                            {
-                                path = reader["replay_path"].ToString();
-                            }
-                        }
-                    }
-                }
-                connection.Close();
-            }
-            if (!string.IsNullOrEmpty(path) && File.Exists(path))
-            {
-                string data = Data.Decompress(File.ReadAllBytes(path));
-                report = Data.Desrialize<Data.BattleReport>(data);
-            }
-            return report;
         }
 
         #endregion

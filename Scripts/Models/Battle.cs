@@ -4,12 +4,71 @@ using System.Collections.Generic;
 using System.Linq;
 using Memewars.RealtimeNetworking.Server;
 using Npgsql;
+using System.IO;
 
 namespace Models
 {
     public enum BattleType
     {
         normal = 1, war = 2, quest = 3
+    }
+
+    public class BattleReport
+    {
+        public long attacker = 0;
+        public long defender = 0;
+        public int totalFrames = 0;
+        public BattleType type = BattleType.normal;
+        public List<Building> buildings = new List<Building>();
+        public List<BattleFrame> frames = new List<BattleFrame>();
+    }
+
+    public class BattleReportItem
+    {
+        public long id = 0;
+        public long attacker = 0;
+        public long defender = 0;
+        public string username = "";
+        public DateTime time;
+        public int stars = 0;
+        public int trophies = 0;
+        public int gold = 0;
+        public int elixir = 0;
+        public int dark = 0;
+        public bool seen = false;
+        public bool hasReply = false;
+    }
+
+    public class BattleFrame
+    {
+        public int frame = 0;
+        public List<BattleFrameUnit> units = new List<BattleFrameUnit>();
+        public List<BattleFrameSpell> spells = new List<BattleFrameSpell>();
+    }
+
+    public class BattleFrameUnit
+    {
+        public long id = 0;
+        public int x = 0;
+        public int y = 0;
+        public Unit unit = null;
+    }
+
+    public class BattleFrameSpell
+    {
+        public long id = 0;
+        public int x = 0;
+        public int y = 0;
+        public Spell spell = null;
+    }
+
+    public class BattleData
+    {
+        public Battle battle = null;
+        public BattleType type = BattleType.normal;
+        public List<Building> buildings = new List<Building>();
+        public List<BattleFrame> savedFrames = new List<BattleFrame>();
+        public List<BattleFrame> frames = new List<BattleFrame>();
     }
 
     public class Battle
@@ -1783,5 +1842,56 @@ namespace Models
             return count;
         }
 
+        public static long FindTarget(long account_id)
+        {
+            long id = 0;
+            string query = String.Format("SELECT id FROM accounts WHERE id <> {0} AND shield < NOW() at time zone 'utc' AND is_online <= 0 ORDER BY RANDOM() LIMIT 1;", account_id);
+            var ret = Database.ExecuteForSingleResult(query);
+            if (ret != null)
+            {
+                _ = long.TryParse(ret["id"], out id);
+            }
+
+            if (id <= 0)
+            {
+                return id;
+            }
+
+            int townHallLevel = 1;
+            query = String.Format("SELECT level FROM buildings WHERE account_id = {0} AND global_id = '{1}';", account_id, BuildingID.townhall.ToString());
+            ret = Database.ExecuteForSingleResult(query);
+            if (ret != null)
+            {
+                _ = int.TryParse(ret["level"], out townHallLevel);
+            }
+
+            if (!Account.SpendResources(account_id, Data.GetBattleSearchCost(townHallLevel), 0, 0, 0))
+            {
+                id = 0;
+                return id;
+            }
+
+            return id;
+        }
+        public static BattleReport GetBattleReport(long report_id)
+        {
+            BattleReport report = null;
+            string path = "";
+            string query = String.Format("SELECT replay_path FROM battles WHERE id = {0}", report_id);
+            var ret = Database.ExecuteForSingleResult(query);
+            if (ret != null)
+            {
+                path = ret["replay_path"].ToString();
+            }
+
+            if (string.IsNullOrEmpty(path) || !File.Exists(path))
+            {
+                return report;
+            }
+
+            string data = Data.Decompress(File.ReadAllBytes(path));
+            report = Data.Desrialize<BattleReport>(data);
+            return report;
+        }
     }
 }
