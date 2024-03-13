@@ -5,6 +5,7 @@ using Newtonsoft.Json;
 using Chaos.NaCl;
 using System.Text;
 using SimpleBase;
+using Models;
 using System.Diagnostics;
 
 namespace Memewars.RealtimeNetworking.Server
@@ -103,7 +104,7 @@ namespace Memewars.RealtimeNetworking.Server
         #region Data
         public enum RequestsID
         {
-            AUTH = 1, SYNC = 2, BUILD = 3, REPLACE = 4, COLLECT = 5, PREUPGRADE = 6, UPGRADE = 7, INSTANTBUILD = 8, TRAIN = 9, CANCELTRAIN = 10, BATTLEFIND = 11, BATTLESTART = 12, BATTLEFRAME = 13, BATTLEEND = 14, OPENCLAN = 15, GETCLANS = 16, JOINCLAN = 17, LEAVECLAN = 18, EDITCLAN = 19, CREATECLAN = 20, OPENWAR = 21, STARTWAR = 22, CANCELWAR = 23, WARSTARTED = 24, WARATTACK = 25, WARREPORTLIST = 26, WARREPORT = 27, JOINREQUESTS = 28, JOINRESPONSE = 29, GETCHATS = 30, SENDCHAT = 31, SENDCODE = 32, CONFIRMCODE = 33, EMAILCODE = 34, EMAILCONFIRM = 35, LOGOUT = 36, KICKMEMBER = 37, BREW = 38, CANCELBREW = 39, RESEARCH = 40, PROMOTEMEMBER = 41, DEMOTEMEMBER = 42, SCOUT = 43, BUYSHIELD = 44, BUYGEM = 45, BYUGOLD = 46, REPORTCHAT = 47, PLAYERSRANK = 48, BOOST = 49, BUYRESOURCE = 50, BATTLEREPORTS = 51, BATTLEREPORT = 52, RENAME = 53, PREAUTH = 54
+            AUTH = 1, SYNC = 2, BUILD = 3, REPLACE = 4, COLLECT = 5, PREUPGRADE = 6, UPGRADE = 7, INSTANTBUILD = 8, TRAIN = 9, CANCELTRAIN = 10, BATTLEFIND = 11, BATTLESTART = 12, BATTLEFRAME = 13, BATTLEEND = 14, OPENCLAN = 15, GETCLANS = 16, JOINCLAN = 17, LEAVECLAN = 18, EDITCLAN = 19, CREATECLAN = 20, OPENWAR = 21, STARTWAR = 22, CANCELWAR = 23, WARSTARTED = 24, WARATTACK = 25, WARREPORTLIST = 26, WARREPORT = 27, JOINREQUESTS = 28, JOINRESPONSE = 29, GETCHATS = 30, SENDCHAT = 31, SENDCODE = 32, CONFIRMCODE = 33, EMAILCODE = 34, EMAILCONFIRM = 35, LOGOUT = 36, KICKMEMBER = 37, BREW = 38, CANCELBREW = 39, RESEARCH = 40, PROMOTEMEMBER = 41, DEMOTEMEMBER = 42, SCOUT = 43, BUYSHIELD = 44, BUYGEM = 45, BUYGOLD = 46, REPORTCHAT = 47, PLAYERSRANK = 48, BOOST = 49, BUYRESOURCE = 50, BATTLEREPORTS = 51, BATTLEREPORT = 52, RENAME = 53, PREAUTH = 54
         }
 
         public static void ReceivedPacket(int clientID, Packet packet)
@@ -202,7 +203,7 @@ namespace Memewars.RealtimeNetworking.Server
                         int bytesLength = packet.ReadInt();
                         byte[] bytes = packet.ReadBytes(bytesLength);
                         int battleType = packet.ReadInt();
-                        Database.StartBattle(clientID, bytes, (Data.BattleType)battleType);
+                        Database.StartBattle(clientID, bytes, (BattleType)battleType);
                         break;
                     case RequestsID.BATTLEFRAME:
                         int bfl = packet.ReadInt();
@@ -214,73 +215,6 @@ namespace Memewars.RealtimeNetworking.Server
                         bool surrender = packet.ReadBool();
                         int frame = packet.ReadInt();
                         Database.EndBattle(databaseID, surrender, frame);
-                        break;
-                    case RequestsID.OPENCLAN:
-                        databaseID = packet.ReadLong();
-                        long clanID = packet.ReadLong();
-                        Database.OpenClan(clientID, databaseID, clanID);
-                        break;
-                    case RequestsID.GETCLANS:
-                        int page = packet.ReadInt();
-                        Database.GetClans(clientID, page);
-                        break;
-                    case RequestsID.CREATECLAN:
-                        string clanName = packet.ReadString();
-                        int minTrophies = packet.ReadInt();
-                        int minHall = packet.ReadInt();
-                        int pattern = packet.ReadInt();
-                        int background = packet.ReadInt();
-                        string patternColor = packet.ReadString();
-                        string backgroundColor = packet.ReadString();
-                        int joinType = packet.ReadInt();
-                        Database.CreateClan(clientID, clanName, minTrophies, minHall, pattern, background, patternColor, backgroundColor, joinType);
-                        break;
-                    case RequestsID.JOINCLAN:
-                        long clan_id = packet.ReadLong();
-                        Database.JoinClan(clientID, clan_id);
-                        break;
-                    case RequestsID.LEAVECLAN:
-                        Database.LeaveClan(clientID);
-                        break;
-                    case RequestsID.EDITCLAN:
-                        string clanNameEdit = packet.ReadString();
-                        int minTrophiesEdit = packet.ReadInt();
-                        int minHallEdit = packet.ReadInt();
-                        int patternEdit = packet.ReadInt();
-                        int backgroundEdit = packet.ReadInt();
-                        string patternColorEdit = packet.ReadString();
-                        string backgroundColorEdit = packet.ReadString();
-                        int joinTypeEdit = packet.ReadInt();
-                        Database.EditClan(clientID, clanNameEdit, minTrophiesEdit, minHallEdit, patternEdit, backgroundEdit, patternColorEdit, backgroundColorEdit, joinTypeEdit);
-                        break;
-                    case RequestsID.OPENWAR:
-                        Database.OpenClanWar(clientID);
-                        break;
-                    case RequestsID.STARTWAR:
-                        string warMembersData = packet.ReadString();
-                        Database.StartClanWar(clientID, warMembersData);
-                        break;
-                    case RequestsID.CANCELWAR:
-                        Database.CancelClanWar(clientID);
-                        break;
-                    case RequestsID.WARATTACK:
-                        databaseID = packet.ReadLong();
-                        Database.StartWarAttack(clientID, databaseID);
-                        break;
-                    case RequestsID.WARREPORTLIST:
-                        Database.GetWarReportsList(clientID);
-                        break;
-                    case RequestsID.WARREPORT:
-                        databaseID = packet.ReadLong();
-                        Database.GetWarReport(clientID, databaseID);
-                        break;
-                    case RequestsID.JOINREQUESTS:
-                        Database.GetClanJoinRequests(clientID);
-                        break;
-                    case RequestsID.JOINRESPONSE:
-                        databaseID = packet.ReadLong();
-                        bool accepted = packet.ReadBool();
-                        Database.ClanJoinRequestResponse(clientID, databaseID, accepted);
                         break;
                     case RequestsID.SENDCHAT:
                         string message = packet.ReadString();
@@ -317,11 +251,7 @@ namespace Memewars.RealtimeNetworking.Server
                     // end email logins
                     
                     case RequestsID.LOGOUT:
-                        Database.LogOut(clientID, address);
-                        break;
-                    case RequestsID.KICKMEMBER:
-                        databaseID = packet.ReadLong();
-                        Database.KickOutClanMember(clientID, databaseID);
+                        Account.LogOut(address);
                         break;
                     case RequestsID.BREW:
                         string spellID = packet.ReadString();
@@ -334,49 +264,27 @@ namespace Memewars.RealtimeNetworking.Server
                     case RequestsID.RESEARCH:
                         int type = packet.ReadInt();
                         string global_id = packet.ReadString();
-                        Database.DoResearch(clientID, (Data.ResearchType)type, global_id);
-                        break;
-                    case RequestsID.PROMOTEMEMBER:
-                        databaseID = packet.ReadLong();
-                        Database.PromoteClanMember(clientID, databaseID);
-                        break;
-                    case RequestsID.DEMOTEMEMBER:
-                        databaseID = packet.ReadLong();
-                        Database.DemoteClanMember(clientID, databaseID);
+                        Database.DoResearch(clientID, (ResearchType)type, global_id);
                         break;
                     case RequestsID.SCOUT:
                         databaseID = packet.ReadLong();
                         int scoutType = packet.ReadInt();
                         Database.Scout(clientID, databaseID, scoutType);
                         break;
+                    // todo
                     case RequestsID.BUYGEM:
-                        int gemPack = packet.ReadInt();
-                        string ps = packet.ReadString();
-                        string pr = packet.ReadString();
-                        string or = packet.ReadString();
-                        string pk = packet.ReadString();
-                        string mk = packet.ReadString();
-                        Database.BuyGem(clientID, gemPack, or, pr, ps, pk, mk);
                         break;
                     case RequestsID.BUYSHIELD:
-                        int shieldPack = packet.ReadInt();
-                        Database.BuyShield(clientID, shieldPack);
                         break;
-                    case RequestsID.BYUGOLD:
-                        int goldPack = packet.ReadInt();
-                        Database.BuyGold(clientID, goldPack);
-                        break;
-                    case RequestsID.REPORTCHAT:
-                        databaseID = packet.ReadLong();
-                        Database.ReportChatMessage(clientID, databaseID);
+                    case RequestsID.BUYGOLD:
                         break;
                     case RequestsID.PLAYERSRANK:
                         int p = packet.ReadInt();
-                        Database.GetPlayersRanking(clientID, p);
+                        Account.GetPlayersRanking(clientID, p);
                         break;
                     case RequestsID.BOOST:
                         databaseID = packet.ReadLong();
-                        Database.BoostResource(clientID, databaseID);
+                        Database.BoostResources(clientID, databaseID);
                         break;
                     case RequestsID.BUYRESOURCE:
                         int resPack = packet.ReadInt();
@@ -391,7 +299,7 @@ namespace Memewars.RealtimeNetworking.Server
                         break;
                     case RequestsID.RENAME:
                         string nm = packet.ReadString();
-                        Database.ChangePlayerName(clientID, nm);
+                        Account.UpdateName(clientID, nm);
                         break;
                 }
             }
