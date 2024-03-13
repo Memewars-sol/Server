@@ -61,6 +61,61 @@ namespace Memewars.RealtimeNetworking.Server
             return con;
         }
 
+        public static void ExecuteNonQuery(string query) {
+            using NpgsqlConnection connection = GetDbConnection();
+            using NpgsqlCommand command = new(query, connection);
+            command.ExecuteNonQuery();
+            connection.Close();
+        }
+
+        public static List<Dictionary<string, string>> ExecuteForResults(string query) {
+            using NpgsqlConnection connection = GetDbConnection();
+            using NpgsqlCommand command = new(query, connection);
+            using NpgsqlDataReader reader = command.ExecuteReader();
+            List<Dictionary<string, string>> retList = new();
+            if (reader.HasRows)
+            {
+                while (reader.Read()) {
+                    Dictionary<string, string> dict = new(); 
+                    for(int i=0; i<reader.FieldCount; i++) {
+                        dict[reader.GetName(i)] = reader.GetValue(i).ToString();
+                    }
+                    retList.Add(dict);
+                }
+            }
+            connection.Close();
+            return retList;
+        }
+
+        public static object ExecuteScalar(string query) {
+            using NpgsqlConnection connection = GetDbConnection();
+            using NpgsqlCommand command = new(query, connection);
+            return command.ExecuteScalar();
+        }
+
+        public static Dictionary<string, string> ExecuteForSingleResult(string query) {
+            using NpgsqlConnection connection = GetDbConnection();
+            using NpgsqlCommand command = new(query, connection);
+            using NpgsqlDataReader reader = command.ExecuteReader();
+            List<Dictionary<string, string>> retList = new();
+            if (!reader.HasRows)
+            {
+                connection.Close();
+                return null;
+            }
+
+            while (reader.Read()) {
+                Dictionary<string, string> dict = new(); 
+                for(int i=0; i<reader.FieldCount; i++) {
+                    dict[reader.GetName(i)] = reader.GetValue(i).ToString();
+                }
+                retList.Add(dict);
+            }
+
+            connection.Close();
+            return retList[0];
+        }
+
         private static DateTime collectTime = DateTime.Now;
         private static bool collecting = false;
         private static double collectPeriod = 5d;

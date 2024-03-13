@@ -114,34 +114,24 @@ namespace Models {
         private static ServerBuilding _GetServerBuildingAsync(string id, int level)
         {
             ServerBuilding data = null;
-            using (NpgsqlConnection connection = Database.GetDbConnection())
+            string query = String.Format("SELECT * FROM server_buildings WHERE global_id = '{0}' AND level = {1};", id, level);
+            var ret = Database.ExecuteForSingleResult(query);
+            if (ret != null)
             {
-                string query = String.Format("SELECT * FROM server_buildings WHERE global_id = '{0}' AND level = {1};", id, level);
-                using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
+                data = new ServerBuilding
                 {
-                    using (NpgsqlDataReader reader = command.ExecuteReader())
-                    {
-                        if (reader.HasRows)
-                        {
-                            while (reader.Read())
-                            {
-                                data = new ServerBuilding();
-                                data.id = id;
-                                long.TryParse(reader["id"].ToString(), out data.databaseID);
-                                int.TryParse(reader["req_gold"].ToString(), out data.requiredGold);
-                                int.TryParse(reader["req_elixir"].ToString(), out data.requiredElixir);
-                                int.TryParse(reader["req_gems"].ToString(), out data.requiredGems);
-                                int.TryParse(reader["req_dark_elixir"].ToString(), out data.requiredDarkElixir);
-                                data.level = level;
-                                int.TryParse(reader["columns_count"].ToString(), out data.columns);
-                                int.TryParse(reader["rows_count"].ToString(), out data.rows);
-                                int.TryParse(reader["build_time"].ToString(), out data.buildTime);
-                                int.TryParse(reader["gained_xp"].ToString(), out data.gainedXp);
-                            }
-                        }
-                    }
-                }
-                connection.Close();
+                    id = id
+                };
+                _ = long.TryParse(ret["id"], out data.databaseID);
+                _ = int.TryParse(ret["req_gold"], out data.requiredGold);
+                _ = int.TryParse(ret["req_elixir"], out data.requiredElixir);
+                _ = int.TryParse(ret["req_gems"], out data.requiredGems);
+                _ = int.TryParse(ret["req_dark_elixir"], out data.requiredDarkElixir);
+                data.level = level;
+                _ = int.TryParse(ret["columns_count"], out data.columns);
+                _ = int.TryParse(ret["rows_count"], out data.rows);
+                _ = int.TryParse(ret["build_time"], out data.buildTime);
+                _ = int.TryParse(ret["gained_xp"], out data.gainedXp);
             }
             return data;
         }
@@ -150,92 +140,86 @@ namespace Models {
         {
             List<ServerBuilding> buildings = new List<ServerBuilding>();
             string query = String.Format("SELECT id, global_id, level, req_gold, req_elixir, req_gems, req_dark_elixir, columns_count, rows_count, build_time, gained_xp FROM server_buildings;");
-            using NpgsqlConnection connection = Database.GetDbConnection();
-            using NpgsqlCommand command = new(query, connection);
-            using NpgsqlDataReader reader = command.ExecuteReader();
-            if (reader.HasRows)
+            var ret = Database.ExecuteForResults(query);
+            if (ret.Count > 0)
             {
-                while (reader.Read())
+                foreach(var res in ret)
                 {
-                    ServerBuilding building = new ServerBuilding();
-                    _ = long.TryParse(reader["id"].ToString(), out building.databaseID);
-                    // building.id = (BuildingID)Enum.Parse(typeof(BuildingID), reader["global_id"].ToString());
-                    _ = building.id = reader["global_id"].ToString();
-                    _ = int.TryParse(reader["level"].ToString(), out building.level);
-                    _ = int.TryParse(reader["req_gold"].ToString(), out building.requiredGold);
-                    _ = int.TryParse(reader["req_elixir"].ToString(), out building.requiredElixir);
-                    _ = int.TryParse(reader["req_gems"].ToString(), out building.requiredGems);
-                    _ = int.TryParse(reader["req_dark_elixir"].ToString(), out building.requiredDarkElixir);
-                    _ = int.TryParse(reader["columns_count"].ToString(), out building.columns);
-                    _ = int.TryParse(reader["rows_count"].ToString(), out building.rows);
-                    _ = int.TryParse(reader["build_time"].ToString(), out building.buildTime);
-                    _ = int.TryParse(reader["gained_xp"].ToString(), out building.gainedXp);
+                    ServerBuilding building = new();
+                    _ = long.TryParse(res["id"], out building.databaseID);
+                    // building.id = (BuildingID)Enum.Parse(typeof(BuildingID), reader["global_id"]);
+                    _ = building.id = res["global_id"];
+                    _ = int.TryParse(res["level"], out building.level);
+                    _ = int.TryParse(res["req_gold"], out building.requiredGold);
+                    _ = int.TryParse(res["req_elixir"], out building.requiredElixir);
+                    _ = int.TryParse(res["req_gems"], out building.requiredGems);
+                    _ = int.TryParse(res["req_dark_elixir"], out building.requiredDarkElixir);
+                    _ = int.TryParse(res["columns_count"], out building.columns);
+                    _ = int.TryParse(res["rows_count"], out building.rows);
+                    _ = int.TryParse(res["build_time"], out building.buildTime);
+                    _ = int.TryParse(res["gained_xp"], out building.gainedXp);
                     buildings.Add(building);
                 }
             }
-            connection.Close();
             return buildings;
         }
         private static List<Building> GetBuildings(long account)
         {
             List<Building> data = new List<Building>();
             string query = String.Format("SELECT buildings.id, buildings.global_id, buildings.level, buildings.x_position, buildings.x_war, buildings.y_war, buildings.boost, buildings.gold_storage, buildings.elixir_storage, buildings.dark_elixir_storage, buildings.y_position, buildings.construction_time, buildings.is_constructing, buildings.construction_build_time, server_buildings.columns_count, server_buildings.rows_count, server_buildings.health, server_buildings.speed, server_buildings.radius, server_buildings.capacity, server_buildings.gold_capacity, server_buildings.elixir_capacity, server_buildings.dark_elixir_capacity, server_buildings.damage, server_buildings.target_type, server_buildings.blind_radius, server_buildings.splash_radius, server_buildings.projectile_speed FROM buildings LEFT JOIN server_buildings ON buildings.global_id = server_buildings.global_id AND buildings.level = server_buildings.level WHERE buildings.account_id = {0};", account);
-            using NpgsqlConnection connection = Database.GetDbConnection();
-            using NpgsqlCommand command = new(query, connection);
-            using NpgsqlDataReader reader = command.ExecuteReader();
-            if (reader.HasRows)
+            var ret = Database.ExecuteForResults(query);
+            if (ret.Count > 0)
             {
-                while (reader.Read())
+                foreach(var res in ret)
                 {
-                    Building building = new Building
+                    Building building = new()
                     {
-                        id = (BuildingID)Enum.Parse(typeof(BuildingID), reader["global_id"].ToString())
+                        id = (BuildingID)Enum.Parse(typeof(BuildingID), res["global_id"].ToString())
                     };
-                    _ = long.TryParse(reader["id"].ToString(), out building.databaseID);
-                    _ = int.TryParse(reader["level"].ToString(), out building.level);
-                    _ = int.TryParse(reader["x_position"].ToString(), out building.x);
-                    _ = int.TryParse(reader["y_position"].ToString(), out building.y);
-                    _ = int.TryParse(reader["x_war"].ToString(), out building.warX);
-                    _ = int.TryParse(reader["y_war"].ToString(), out building.warY);
-                    _ = int.TryParse(reader["columns_count"].ToString(), out building.columns);
-                    _ = int.TryParse(reader["rows_count"].ToString(), out building.rows);
+                    _ = long.TryParse(res["id"], out building.databaseID);
+                    _ = int.TryParse(res["level"], out building.level);
+                    _ = int.TryParse(res["x_position"], out building.x);
+                    _ = int.TryParse(res["y_position"], out building.y);
+                    _ = int.TryParse(res["x_war"], out building.warX);
+                    _ = int.TryParse(res["y_war"], out building.warY);
+                    _ = int.TryParse(res["columns_count"], out building.columns);
+                    _ = int.TryParse(res["rows_count"], out building.rows);
 
-                    _ = float.TryParse(reader["gold_storage"].ToString(), out float storage);
+                    _ = float.TryParse(res["gold_storage"], out float storage);
                     building.goldStorage = (int)Math.Floor(storage);
 
                     storage = 0;
-                    _ = float.TryParse(reader["elixir_storage"].ToString(), out storage);
+                    _ = float.TryParse(res["elixir_storage"], out storage);
                     building.elixirStorage = (int)Math.Floor(storage);
 
                     storage = 0;
-                    _ = float.TryParse(reader["dark_elixir_storage"].ToString(), out storage);
+                    _ = float.TryParse(res["dark_elixir_storage"], out storage);
                     building.darkStorage = (int)Math.Floor(storage);
 
-                    _ = DateTime.TryParse(reader["boost"].ToString(), out building.boost);
-                    _ = float.TryParse(reader["damage"].ToString(), out building.damage);
-                    _ = int.TryParse(reader["capacity"].ToString(), out building.capacity);
-                    _ = int.TryParse(reader["gold_capacity"].ToString(), out building.goldCapacity);
-                    _ = int.TryParse(reader["elixir_capacity"].ToString(), out building.elixirCapacity);
-                    _ = int.TryParse(reader["dark_elixir_capacity"].ToString(), out building.darkCapacity);
-                    _ = float.TryParse(reader["speed"].ToString(), out building.speed);
-                    _ = float.TryParse(reader["radius"].ToString(), out building.radius);
-                    _ = int.TryParse(reader["health"].ToString(), out building.health);
-                    _ = DateTime.TryParse(reader["construction_time"].ToString(), out building.constructionTime);
-                    _ = float.TryParse(reader["blind_radius"].ToString(), out building.blindRange);
-                    _ = float.TryParse(reader["splash_radius"].ToString(), out building.splashRange);
-                    _ = float.TryParse(reader["projectile_speed"].ToString(), out building.rangedSpeed);
-                    string tt = reader["target_type"].ToString();
+                    _ = DateTime.TryParse(res["boost"], out building.boost);
+                    _ = float.TryParse(res["damage"], out building.damage);
+                    _ = int.TryParse(res["capacity"], out building.capacity);
+                    _ = int.TryParse(res["gold_capacity"], out building.goldCapacity);
+                    _ = int.TryParse(res["elixir_capacity"], out building.elixirCapacity);
+                    _ = int.TryParse(res["dark_elixir_capacity"], out building.darkCapacity);
+                    _ = float.TryParse(res["speed"], out building.speed);
+                    _ = float.TryParse(res["radius"], out building.radius);
+                    _ = int.TryParse(res["health"], out building.health);
+                    _ = DateTime.TryParse(res["construction_time"], out building.constructionTime);
+                    _ = float.TryParse(res["blind_radius"], out building.blindRange);
+                    _ = float.TryParse(res["splash_radius"], out building.splashRange);
+                    _ = float.TryParse(res["projectile_speed"], out building.rangedSpeed);
+                    string tt = res["target_type"];
                     if (!string.IsNullOrEmpty(tt))
                     {
                         building.targetType = (BuildingTargetType)Enum.Parse(typeof(BuildingTargetType), tt);
                     }
-                    _ = int.TryParse(reader["is_constructing"].ToString(), out int isConstructing);
+                    _ = int.TryParse(res["is_constructing"], out int isConstructing);
                     building.isConstructing = isConstructing > 0;
-                    _ = int.TryParse(reader["construction_build_time"].ToString(), out building.buildTime);
+                    _ = int.TryParse(res["construction_build_time"], out building.buildTime);
                     data.Add(building);
                 }
             }
-            connection.Close();
             return data;
         }
 
@@ -253,8 +237,8 @@ namespace Models {
             {
                 int bX = buildings[i].x;
                 int bY = buildings[i].y;
-                Rectangle rect1 = new Rectangle(bX, bY, buildings[i].columns, buildings[i].rows);
-                Rectangle rect2 = new Rectangle(x, y, building.columns, building.rows);
+                Rectangle rect1 = new(bX, bY, buildings[i].columns, buildings[i].rows);
+                Rectangle rect2 = new(x, y, building.columns, building.rows);
 
                 // intersected with another building
                 if (rect2.IntersectsWith(rect1))
@@ -263,7 +247,6 @@ namespace Models {
                 }
             }
 
-            using NpgsqlConnection connection = Database.GetDbConnection();
             string query = string.Format(@"INSERT INTO buildings (
                         global_id, 
                         account_id, 
@@ -285,8 +268,7 @@ namespace Models {
                         {6},
                         {7}
                     ) RETURNING id;", id, account_id, x, y, level, warX, warY, is_cnft);
-            using NpgsqlCommand command = new NpgsqlCommand(query, connection);
-            var building_id = (long)command.ExecuteScalar();
+            var building_id = (long)Database.ExecuteScalar(query);
 
             // mints the cNFT
             // only mint if needed
@@ -303,59 +285,46 @@ namespace Models {
         {
             Building building = null;
             string query = String.Format("SELECT level, global_id FROM buildings WHERE id = {0};", id);
-            using NpgsqlConnection connection = Database.GetDbConnection();
-            using NpgsqlCommand command = new(query, connection);
-            using NpgsqlDataReader reader = command.ExecuteReader();
-            if (reader.HasRows)
+            var ret = Database.ExecuteForSingleResult(query);
+            if (ret != null)
             {
-                building = new Building();
-                while (reader.Read())
+                building = new Building
                 {
-                    building.id = (BuildingID)Enum.Parse(typeof(BuildingID), reader["global_id"].ToString());
-                    _ = int.TryParse(reader["level"].ToString(), out building.level);
-                }
+                    id = (BuildingID)Enum.Parse(typeof(BuildingID), ret["global_id"])
+                };
+                _ = int.TryParse(ret["level"], out building.level);
             }
-            connection.Close();
             return building;
         }
         public static List<Building> GetByGlobalID(string globalID, long account)
         {
             List<Building> buildings = new List<Building>();
             string query = String.Format("SELECT buildings.level, buildings.global_id, server_buildings.capacity FROM buildings LEFT JOIN server_buildings ON buildings.global_id = server_buildings.global_id AND buildings.level = server_buildings.level WHERE buildings.global_id = '{0}' AND buildings.account_id = {1};", globalID, account);
-            using NpgsqlConnection connection = Database.GetDbConnection();
-            using NpgsqlCommand command = new(query, connection);
-            using NpgsqlDataReader reader = command.ExecuteReader();
+            var ret = Database.ExecuteForResults(query);
+            if (ret.Count > 0)
             {
-                if (reader.HasRows)
+                foreach(var res in ret)
                 {
-                    while (reader.Read())
+                    Building building = new()
                     {
-                        Building building = new()
-                        {
-                            id = (BuildingID)Enum.Parse(typeof(BuildingID), reader["global_id"].ToString())
-                        };
-                        _ = int.TryParse(reader["level"].ToString(), out building.level);
-                        _ = int.TryParse(reader["capacity"].ToString(), out building.capacity);
-                        buildings.Add(building);
-                    }
+                        id = (BuildingID)Enum.Parse(typeof(BuildingID), res["global_id"])
+                    };
+                    _ = int.TryParse(res["level"], out building.level);
+                    _ = int.TryParse(res["capacity"], out building.capacity);
+                    buildings.Add(building);
                 }
             }
-            connection.Close();
             return buildings;
         }
 
         public static int? GetBuildTime(string globalId, int level) {
             int? time = null;
             string query = String.Format("SELECT build_time FROM server_buildings WHERE global_id = '{0}' AND level = {1};", globalId, level);
-            using NpgsqlConnection connection = Database.GetDbConnection();
-            using NpgsqlCommand command = new(query, connection);
-            using NpgsqlDataReader reader = command.ExecuteReader();
-            if (reader.HasRows)
+            var ret = Database.ExecuteForSingleResult(query);
+            if (ret != null)
             {
-                while (reader.Read())
-                {
-                    time = int.Parse(reader["build_time"].ToString());
-                }
+                time = int.Parse(ret["build_time"]);
+                
             }
             return time;
         }
@@ -370,7 +339,6 @@ namespace Models {
             }
 
             bool IsWarLayout = layout == (int)BuildingLayoutType.war;
-            using NpgsqlConnection connection = Database.GetDbConnection();
             List<Building> buildings = GetBuildings(account_id);
             for (int i = 0; i < buildings.Count; i++)
             {
@@ -392,47 +360,33 @@ namespace Models {
             {
                 long war_id = 0;
                 string warQuery = String.Format("SELECT war_id FROM accounts WHERE id = {0};", account_id);
-                using (NpgsqlCommand command = new(warQuery, connection))
+                var ret = Database.ExecuteForSingleResult(warQuery);
+                if (ret != null)
                 {
-                    using NpgsqlDataReader reader = command.ExecuteReader();
-                    if (reader.HasRows)
-                    {
-                        while (reader.Read())
-                        {
-                            _ = long.TryParse(reader["war_id"].ToString(), out war_id);
-                        }
-                    }
+                    _ = long.TryParse(ret["war_id"], out war_id);
                 }
 
                 // no war
                 if (war_id <= 0)
                 {
-                    connection.Close();
                     return response;
                 }
 
                 int war_stage = 0;
                 warQuery = string.Format("SELECT stage FROM clan_wars WHERE id = {0};", war_id);
-                using (NpgsqlCommand command = new(warQuery, connection))
+                ret = Database.ExecuteForSingleResult(warQuery);
+                if (ret != null)
                 {
-                    using NpgsqlDataReader reader = command.ExecuteReader();
-                    if (reader.HasRows)
-                    {
-                        while (reader.Read())
-                        {
-                            _ = int.TryParse(reader["stage"].ToString(), out war_stage);
-                        }
-                    }
+                    _ = int.TryParse(ret["stage"], out war_stage);
                 }
+
                 if (war_stage == 1)
                 {
                     warQuery = string.Format("UPDATE buildings SET x_war = {0}, y_war = {1} WHERE id = {2}", x, y, layoutID);
-                    using NpgsqlCommand command = new(warQuery, connection);
-                    command.ExecuteNonQuery();
+                    Database.ExecuteNonQuery(warQuery);
                     response = 1;
                 }
 
-                connection.Close();
                 return response;
             }
             
@@ -456,7 +410,6 @@ namespace Models {
 
             if(!haveBuilding) {
                 response = 3;
-                connection.Close();
                 return response;
             }
 
@@ -466,15 +419,13 @@ namespace Models {
             if (time > 0 && buildersCount <= constructingCount)
             {
                 response = 5;
-                connection.Close();
                 return response;
             }
 
-            Building townHall = Building.GetByGlobalID("townhall", account_id)[0];
+            Building townHall = GetByGlobalID("townhall", account_id)[0];
             if (building.id == "townhall")
             {
                 // dont place townhall
-                connection.Close();
                 return response;
             }
 
@@ -485,14 +436,12 @@ namespace Models {
             if (limits == null || haveCount >= limits.count)
             {
                 response = 6;
-                connection.Close();
                 return response;
             }
 
-            if (Account.SpendResources(account_id, building.requiredGold, building.requiredElixir, building.requiredGems, building.requiredDarkElixir))
+            if (!Account.SpendResources(account_id, building.requiredGold, building.requiredElixir, building.requiredGems, building.requiredDarkElixir))
             {
                 response = 2;
-                connection.Close();
                 return response;
             }
 
@@ -507,13 +456,8 @@ namespace Models {
                 query = String.Format("INSERT INTO buildings (global_id, account_id, x_position, y_position, level, is_constructing, track_time) VALUES('{0}', {1}, {2}, {3}, 1, 0, NOW() at time zone 'utc' - INTERVAL '1 HOUR');", building.id, account_id, x, y);
                 Account.AddXP(account_id, building.gainedXp);
             }
-            using (NpgsqlCommand command = new(query, connection))
-            {
-                command.ExecuteNonQuery();
-                response = 1;
-            }
-
-            connection.Close();
+            Database.ExecuteNonQuery(query);
+            response = 1;
             return response;
         }
 
