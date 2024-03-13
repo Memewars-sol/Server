@@ -70,7 +70,7 @@ namespace Models {
         public long Id { get; set; }
         public string Address { get; set; }
 
-        public async Task<long> Create() {
+        public long Create() {
             string query = string.Format("INSERT INTO accounts (device_id, password, name, address) VALUES('{0}', '{1}', '{2}', '{3}') RETURNING id;", "", "", "", Address);
             
             // get Id
@@ -85,7 +85,7 @@ namespace Models {
             List<long> BuildingIds = new List<long>
             {
                 // need to find a way to create cnfts using one tx
-                await new Building
+                new Building
                 {
                     id = BuildingID.townhall,
                     account_id = Id,
@@ -96,7 +96,7 @@ namespace Models {
                     level = 1,
                     address = Address,
                 }.Create(),
-                await new Building
+                new Building
                 {
                     id = BuildingID.goldmine,
                     account_id = Id,
@@ -107,7 +107,7 @@ namespace Models {
                     level = 1,
                     address = Address,
                 }.Create(),
-                await new Building
+                new Building
                 {
                     id = BuildingID.goldstorage,
                     account_id = Id,
@@ -118,7 +118,7 @@ namespace Models {
                     level = 1,
                     address = Address,
                 }.Create(),
-                await new Building
+                new Building
                 {
                     id = BuildingID.elixirmine,
                     account_id = Id,
@@ -129,7 +129,7 @@ namespace Models {
                     level = 1,
                     address = Address,
                 }.Create(),
-                await new Building
+                new Building
                 {
                     id = BuildingID.elixirstorage,
                     account_id = Id,
@@ -140,7 +140,7 @@ namespace Models {
                     level = 1,
                     address = Address,
                 }.Create(),
-                await new Building
+                new Building
                 {
                     id = BuildingID.buildershut,
                     account_id = Id,
@@ -163,7 +163,7 @@ namespace Models {
 
                 // add random obstacles
                 // dont mint these as cnft
-                await new Building {
+                new Building {
                     id = BuildingID.obstacle,
                     account_id = Id,
                     x = xl[index],
@@ -189,7 +189,7 @@ namespace Models {
             return Id;
         }
 
-        public static async Task<InitializationData> GetInitializationData(int id, string address) {
+        public static InitializationData GetInitializationData(int id, string address) {
             InitializationData initializationData = new();
             string query = string.Format("SELECT id, password, is_online, client_id FROM accounts WHERE address = '{0}'", address);
             var ret = Database.ExecuteForResults(query);
@@ -209,7 +209,7 @@ namespace Models {
             // dont have account so we initialize
             if (initializationData.accountID == 0)
             {
-                initializationData.accountID = await new Account{ Address = address }.Create();
+                initializationData.accountID = new Account{ Address = address }.Create();
             }
             
             // set account as online

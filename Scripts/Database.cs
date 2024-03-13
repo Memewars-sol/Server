@@ -188,7 +188,7 @@ namespace Memewars.RealtimeNetworking.Server
 
         public async static void AuthenticatePlayer(int id, string address)
         {
-            InitializationData auth = await Account.GetInitializationData(id, address);
+            InitializationData auth = Account.GetInitializationData(id, address);
             Packet packet = new Packet();
             packet.Write((int)Terminal.RequestsID.AUTH);
             
@@ -1202,12 +1202,12 @@ namespace Memewars.RealtimeNetworking.Server
 
         #region Build And Replace
 
-        public async static void PlaceBuilding(int id, string buildingID, int x, int y, int layout, long layoutID)
+        public static void PlaceBuilding(int id, string buildingID, int x, int y, int layout, long layoutID)
         {
             long account_id = Server.clients[id].account;
             Packet packet = new Packet();
             packet.Write((int)Terminal.RequestsID.BUILD);
-            ServerBuilding building = await Building.GetServerBuildingAsync(buildingID, 1);
+            ServerBuilding building = Building.GetServerBuilding(buildingID, 1);
             int response = Building.Place(account_id, building, x, y, layout, layoutID);
             packet.Write(response);
             Sender.TCP_Send(id, packet);

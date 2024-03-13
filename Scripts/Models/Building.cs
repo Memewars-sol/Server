@@ -102,16 +102,7 @@ namespace Models {
         public bool is_cnft = true;
         // end this building's params
 
-        public async static Task<ServerBuilding> GetServerBuildingAsync(string id, int level)
-        {
-            Task<ServerBuilding> task = Task.Run(() =>
-            {
-                return Retry.Do(() => _GetServerBuildingAsync(id, level), TimeSpan.FromSeconds(0.1), 1, false);
-            });
-            return await task;
-        }
-
-        private static ServerBuilding _GetServerBuildingAsync(string id, int level)
+        public static ServerBuilding GetServerBuilding(string id, int level)
         {
             ServerBuilding data = null;
             string query = String.Format("SELECT * FROM server_buildings WHERE global_id = '{0}' AND level = {1};", id, level);
@@ -223,9 +214,9 @@ namespace Models {
             return data;
         }
 
-        public async Task<long> Create() {
+        public long Create() {
             is_cnft = !NonCNFTBuildings.Contains(id);
-            ServerBuilding building = await GetServerBuildingAsync(id.ToString(), level);
+            ServerBuilding building = GetServerBuilding(id.ToString(), level);
 
             if (building == null || x < 0 || y < 0 || x + building.columns > Data.gridSize /* x position more than max size */ || y + building.rows > Data.gridSize  /* y position more than max size */)
             {
