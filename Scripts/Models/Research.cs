@@ -82,6 +82,58 @@ namespace Models {
             }
             return research;
         }
+
+        public static (int, Research) Do(long account_id, ResearchType type, string global_id)
+        {
+            int response = 0;
+            Research research = Get(account_id, global_id, type, true);
+            if (research.researching)
+            {
+                response = 3;
+                return (response, research);
+            }
+            int time = 0;
+            if (type == ResearchType.unit)
+            {
+                ServerUnit unit = Unit.GetServerUnit(global_id, research.level + 1);
+                if (unit != null)
+                {
+                    return (response, research);
+                }
+                if (!Account.SpendResources(account_id, unit.researchGold, unit.researchElixir, unit.researchGems, unit.researchDarkElixir))
+                {
+                    response = 2;
+                    return (response, research);
+                }
+
+                time = unit.researchTime;
+                Account.AddXP(account_id, unit.researchXp);
+            }
+            else if (type == ResearchType.spell)
+            {
+                ServerSpell spell = Spell.GetServerSpell(global_id, research.level + 1);
+                if (spell != null)
+                {
+                    return (response, research);
+                }
+
+                if (!Account.SpendResources(account_id, spell.researchGold, spell.researchElixir, spell.researchGems, spell.researchDarkElixir))
+                {
+                    response = 2;
+                    return (response, research);
+                }
+
+                time = spell.researchTime;
+                Account.AddXP(account_id, spell.researchXp);
+            }
+
+            response = 1;
+            string query = String.Format("UPDATE research SET level = level + 1, researching = NOW() at time zone 'utc' + INTERVAL '{0} SECOND' WHERE id = {1};", time, research.id);
+            Database.ExecuteNonQuery(query);
+            research = Research.Get(account_id, global_id, type);
+            return (response, research);
+        }
+
     }
 
 }

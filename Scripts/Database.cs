@@ -228,7 +228,7 @@ namespace Memewars.RealtimeNetworking.Server
             packet.Write(1);
             List<Building> buildings = Account.GetBuildings(account_id);
             player.units = Unit.GetUnits(account_id);
-            player.spells = await GetSpellsAsync(account_id);
+            player.spells = Spell.All(account_id);
             player.buildings = buildings;
             string playerData = await Data.SerializeAsync<Player>(player);
             byte[] playerBytes = await Data.CompressAsync(playerData);
@@ -841,12 +841,12 @@ namespace Memewars.RealtimeNetworking.Server
                             }
                             for (int u = 0; u < battles[i].frames[0].spells.Count; u++)
                             {
-                                battles[i].frames[0].spells[u].spell = GetSpell(connection, battles[i].frames[0].spells[u].id, battles[i].battle.attacker, true);
+                                battles[i].frames[0].spells[u].spell = Spell.Get(battles[i].frames[0].spells[u].id, battles[i].battle.attacker, true);
                                 if (battles[i].frames[0].spells[u].spell != null)
                                 {
                                     if (battles[i].battle.CanAddSpell(battles[i].frames[0].spells[u].x, battles[i].frames[0].spells[u].y))
                                     {
-                                        DeleteSpell(battles[i].frames[0].spells[u].id, connection);
+                                        Spell.Delete(battles[i].frames[0].spells[u].id);
                                         battles[i].battle.AddSpell(battles[i].frames[0].spells[u].spell, battles[i].frames[0].spells[u].x, battles[i].frames[0].spells[u].y);
                                     }
                                 }
@@ -2163,260 +2163,24 @@ namespace Memewars.RealtimeNetworking.Server
         #endregion
 
         #region Spell
-        public async static void BrewSpell(int id, string globalID)
+        public static void BrewSpell(int id, string globalID)
         {
             Packet packet = new Packet();
             packet.Write((int)Terminal.RequestsID.BREW);
             long account_id = Server.clients[id].account;
-            int res = await BrewSpellAsync(account_id, globalID);
+            int res = Spell.Brew(account_id, globalID);
             packet.Write(res);
             Sender.TCP_Send(id, packet);
         }
 
-        private async static Task<int> BrewSpellAsync(long account_id, string globalID)
-        {
-            Task<int> task = Task.Run(() =>
-            {
-                return Retry.Do(() => _BrewSpellAsync(account_id, globalID), TimeSpan.FromSeconds(0.1), 1, false);
-            });
-            return await task;
-        }
-
-        private static int _BrewSpellAsync(long account_id, string globalID)
-        {
-            int response = 0;
-            using (NpgsqlConnection connection = GetDbConnection())
-            {
-                int level = 1;
-                Research research = Research.Get(account_id, globalID, ResearchType.spell);
-                if (research != null)
-                {
-                    level = research.level;
-                }
-                ServerSpell spell = GetServerSpell(connection, globalID, level);
-                if (spell != null)
-                {
-                    int capacity = 0;
-                    List<Building> spellFactory = Building.GetByGlobalID(BuildingID.spellfactory.ToString(), account_id);
-                    for (int i = 0; i < spellFactory.Count; i++)
-                    {
-                        capacity += spellFactory[i].capacity;
-                    }
-
-                    int occupied = 999;
-                    string query = String.Format("SELECT SUM(server_spells.housing) AS occupied FROM spells LEFT JOIN server_spells ON spells.global_id = server_spells.global_id AND spells.level = server_spells.level WHERE spells.account_id = {0} AND ready <= 0;", account_id);
-                    using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                    {
-                        using (NpgsqlDataReader reader = command.ExecuteReader())
-                        {
-                            if (reader.HasRows)
-                            {
-                                while (reader.Read())
-                                {
-                                    int.TryParse(reader["occupied"].ToString(), out occupied);
-                                }
-                            }
-                        }
-                    }
-
-                    if (capacity - occupied >= spell.housing)
-                    {
-                        if (Account.SpendResources(account_id, spell.requiredGold, spell.requiredElixir, spell.requiredGems, spell.requiredDarkElixir))
-                        {
-                            query = String.Format("INSERT INTO spells (global_id, level, account_id) VALUES('{0}', {1}, {2})", globalID, level, account_id);
-                            using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                            {
-                                command.ExecuteNonQuery();
-                                response = 1;
-                            }
-                        }
-                        else
-                        {
-                            response = 2;
-                        }
-                    }
-                    else
-                    {
-                        response = 4;
-                    }
-                }
-                else
-                {
-                    response = 3;
-                }
-                connection.Close();
-            }
-            return response;
-        }
-
-        private static ServerSpell GetServerSpell(NpgsqlConnection connection, string id, int level)
-        {
-            ServerSpell spell = null;
-            string query = String.Format("SELECT id, global_id, level, req_gold, req_elixir, req_gem, req_dark_elixir, brew_time, housing, radius, pulses_count, pulses_duration, pulses_value, pulses_value_2, research_time, research_gold, research_elixir, research_dark_elixir, research_gems, research_xp FROM server_spells WHERE global_id = '{0}' AND level = {1};", id, level);
-            using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-            {
-                using (NpgsqlDataReader reader = command.ExecuteReader())
-                {
-                    if (reader.HasRows)
-                    {
-                        while (reader.Read())
-                        {
-                            spell = new ServerSpell();
-                            long.TryParse(reader["id"].ToString(), out spell.databaseID);
-                            spell.id = (SpellID)Enum.Parse(typeof(SpellID), reader["global_id"].ToString());
-                            int.TryParse(reader["level"].ToString(), out spell.level);
-                            int.TryParse(reader["req_gold"].ToString(), out spell.requiredGold);
-                            int.TryParse(reader["req_elixir"].ToString(), out spell.requiredElixir);
-                            int.TryParse(reader["req_gem"].ToString(), out spell.requiredGems);
-                            int.TryParse(reader["req_dark_elixir"].ToString(), out spell.requiredDarkElixir);
-                            int.TryParse(reader["brew_time"].ToString(), out spell.brewTime);
-                            int.TryParse(reader["housing"].ToString(), out spell.housing);
-                            float.TryParse(reader["radius"].ToString(), out spell.radius);
-                            int.TryParse(reader["pulses_count"].ToString(), out spell.pulsesCount);
-                            float.TryParse(reader["pulses_duration"].ToString(), out spell.pulsesDuration);
-                            float.TryParse(reader["pulses_value"].ToString(), out spell.pulsesValue);
-                            float.TryParse(reader["pulses_value_2"].ToString(), out spell.pulsesValue2);
-                            int.TryParse(reader["research_time"].ToString(), out spell.researchTime);
-                            int.TryParse(reader["research_gold"].ToString(), out spell.researchGold);
-                            int.TryParse(reader["research_elixir"].ToString(), out spell.researchElixir);
-                            int.TryParse(reader["research_dark_elixir"].ToString(), out spell.researchDarkElixir);
-                            int.TryParse(reader["research_gems"].ToString(), out spell.researchGems);
-                            int.TryParse(reader["research_xp"].ToString(), out spell.researchXp);
-                        }
-                    }
-                }
-            }
-            return spell;
-        }
-
-        public async static void CancelBrewSpell(int id, long databaseID)
+        public static void CancelBrewSpell(int id, long databaseID)
         {
             Packet packet = new Packet();
             packet.Write((int)Terminal.RequestsID.CANCELBREW);
             long account_id = Server.clients[id].account;
-            int res = await CancelBrewSpellAsync(account_id, databaseID);
+            int res = Spell.CancelBrew(account_id, databaseID);
             packet.Write(res);
             Sender.TCP_Send(id, packet);
-        }
-
-        private async static Task<int> CancelBrewSpellAsync(long account_id, long databaseID)
-        {
-            Task<int> task = Task.Run(() =>
-            {
-                return Retry.Do(() => _CancelBrewSpellAsync(account_id, databaseID), TimeSpan.FromSeconds(0.1), 10, false);
-            });
-            return await task;
-        }
-
-        private static int _CancelBrewSpellAsync(long account_id, long databaseID)
-        {
-            int id = 0;
-            using (NpgsqlConnection connection = GetDbConnection())
-            {
-                string query = String.Format("DELETE FROM spells WHERE id = {0} AND account_id = {1} AND ready <= 0", databaseID, account_id);
-                using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                {
-                    command.ExecuteNonQuery();
-                    id = 1;
-                }
-                connection.Close();
-            }
-            return id;
-        }
-
-        private async static Task<List<Spell>> GetSpellsAsync(long account_id)
-        {
-            Task<List<Spell>> task = Task.Run(() =>
-            {
-                return Retry.Do(() => _GetSpellsAsync(account_id), TimeSpan.FromSeconds(0.1), 1, false);
-            });
-            return await task;
-        }
-
-        private static List<Spell> _GetSpellsAsync(long account_id)
-        {
-            List<Spell> spells = new List<Spell>();
-            using (NpgsqlConnection connection = GetDbConnection())
-            {
-                string query = String.Format("SELECT spells.id, spells.global_id, spells.level, spells.brewed, spells.ready, spells.brewed_time, server_spells.brew_time, server_spells.housing FROM spells LEFT JOIN server_spells ON spells.global_id = server_spells.global_id AND spells.level = server_spells.level WHERE spells.account_id = {0};", account_id);
-                using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                {
-                    using (NpgsqlDataReader reader = command.ExecuteReader())
-                    {
-                        if (reader.HasRows)
-                        {
-                            while (reader.Read())
-                            {
-                                Spell spell = new Spell();
-                                spell.id = (SpellID)Enum.Parse(typeof(SpellID), reader["global_id"].ToString());
-                                long.TryParse(reader["id"].ToString(), out spell.databaseID);
-                                int.TryParse(reader["level"].ToString(), out spell.level);
-                                int.TryParse(reader["housing"].ToString(), out spell.hosing);
-                                int.TryParse(reader["brew_time"].ToString(), out spell.brewTime);
-                                float.TryParse(reader["brewed_time"].ToString(), out spell.brewedTime);
-
-                                int isTrue = 0;
-                                int.TryParse(reader["brewed"].ToString(), out isTrue);
-                                spell.brewed = isTrue > 0;
-
-                                isTrue = 0;
-                                int.TryParse(reader["ready"].ToString(), out isTrue);
-                                spell.ready = isTrue > 0;
-                                spells.Add(spell);
-                            }
-                        }
-                    }
-                }
-                connection.Close();
-            }
-            return spells;
-        }
-
-        private static Spell GetSpell(NpgsqlConnection connection, long database_id, long account_id, bool get_server = false)
-        {
-            Spell spell = null;
-            string query = String.Format("SELECT spells.id, spells.global_id, spells.level, spells.brewed, spells.ready, spells.brewed_time, server_spells.brew_time, server_spells.housing FROM spells LEFT JOIN server_spells ON spells.global_id = server_spells.global_id AND spells.level = server_spells.level WHERE spells.id = {0} AND spells.account_id = {1};", database_id, account_id);
-            using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-            {
-                using (NpgsqlDataReader reader = command.ExecuteReader())
-                {
-                    if (reader.HasRows)
-                    {
-                        while (reader.Read())
-                        {
-                            spell = new Spell();
-                            spell.id = (SpellID)Enum.Parse(typeof(SpellID), reader["global_id"].ToString());
-                            long.TryParse(reader["id"].ToString(), out spell.databaseID);
-                            int.TryParse(reader["level"].ToString(), out spell.level);
-                            int.TryParse(reader["housing"].ToString(), out spell.hosing);
-                            int.TryParse(reader["brew_time"].ToString(), out spell.brewTime);
-                            float.TryParse(reader["brewed_time"].ToString(), out spell.brewedTime);
-
-                            int isTrue = 0;
-                            int.TryParse(reader["brewed"].ToString(), out isTrue);
-                            spell.brewed = isTrue > 0;
-
-                            isTrue = 0;
-                            int.TryParse(reader["ready"].ToString(), out isTrue);
-                            spell.ready = isTrue > 0;
-                        }
-                    }
-                }
-            }
-            if (spell != null && get_server)
-            {
-                spell.server = GetServerSpell(connection, spell.id.ToString(), spell.level);
-            }
-            return spell;
-        }
-
-        public static void DeleteSpell(long id, NpgsqlConnection connection)
-        {
-            string query = String.Format("DELETE FROM spells WHERE id = {0};", id);
-            using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-            {
-                command.ExecuteNonQuery();
-            }
         }
 
         #endregion
@@ -2426,7 +2190,7 @@ namespace Memewars.RealtimeNetworking.Server
         public async static void DoResearch(int id, ResearchType type, string global_id)
         {
             long account_id = Server.clients[id].account;
-            var res = await DoResearchAsync(account_id, type, global_id);
+            var res = Research.Do(account_id, type, global_id);
             Packet packet = new Packet();
             packet.Write((int)Terminal.RequestsID.RESEARCH);
             packet.Write(res.Item1);
@@ -2439,79 +2203,6 @@ namespace Memewars.RealtimeNetworking.Server
             }
             Sender.TCP_Send(id, packet);
         }
-
-        private async static Task<(int, Research)> DoResearchAsync(long account_id, ResearchType type, string global_id)
-        {
-            Task<(int, Research)> task = Task.Run(() =>
-            {
-                return Retry.Do(() => _DoResearchAsync(account_id, type, global_id), TimeSpan.FromSeconds(0.1), 1, false);
-            });
-            return await task;
-        }
-
-        private static (int, Research) _DoResearchAsync(long account_id, ResearchType type, string global_id)
-        {
-            Research research = null;
-            int response = 0;
-            using (NpgsqlConnection connection = GetDbConnection())
-            {
-                research = Research.Get(account_id, global_id, type, true);
-                if (research.researching)
-                {
-                    response = 3;
-                }
-                else
-                {
-                    int time = 0;
-                    if (type == ResearchType.unit)
-                    {
-                        ServerUnit unit = Unit.GetServerUnit(global_id, research.level + 1);
-                        if (unit != null)
-                        {
-                            if (Account.SpendResources(account_id, unit.researchGold, unit.researchElixir, unit.researchGems, unit.researchDarkElixir))
-                            {
-                                time = unit.researchTime;
-                                Account.AddXP(account_id, unit.researchXp);
-                                response = 1;
-                            }
-                            else
-                            {
-                                response = 2;
-                            }
-                        }
-                    }
-                    else if (type == ResearchType.spell)
-                    {
-                        ServerSpell spell = GetServerSpell(connection, global_id, research.level + 1);
-                        if (spell != null)
-                        {
-                            if (Account.SpendResources(account_id, spell.researchGold, spell.researchElixir, spell.researchGems, spell.researchDarkElixir))
-                            {
-                                time = spell.researchTime;
-                                Account.AddXP(account_id, spell.researchXp);
-                                response = 1;
-                            }
-                            else
-                            {
-                                response = 2;
-                            }
-                        }
-                    }
-                    if (response == 1)
-                    {
-                        string query = String.Format("UPDATE research SET level = level + 1, researching = NOW() at time zone 'utc' + INTERVAL '{0} SECOND' WHERE id = {1};", time, research.id);
-                        using (NpgsqlCommand command = new NpgsqlCommand(query, connection))
-                        {
-                            command.ExecuteNonQuery();
-                        }
-                        research = Research.Get(account_id, global_id, type);
-                    }
-                }
-                connection.Close();
-            }
-            return (response, research);
-        }
-
         #endregion
 
     }
