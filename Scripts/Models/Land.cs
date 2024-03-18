@@ -64,6 +64,17 @@ namespace Models {
         }
 
         public static void AddCitizen(long land_id, long account_id) {
+            var land = new Land(land_id);
+            
+            // doesn't exist
+            if(string.IsNullOrEmpty(land.MintAddress)) {
+                throw new Exception("Land doesn't exist");
+            }
+
+            if(land.CitizenCap <= land.Citizens.Count) {
+                throw new Exception("Maximum citizen size reached");
+            }
+            
             string query = string.Format("insert into land_citizen (land_id, account_id) values ({0},{1})", land_id, account_id);
             Database.ExecuteNonQuery(query);
         }
