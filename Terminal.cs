@@ -104,7 +104,67 @@ namespace Memewars.RealtimeNetworking.Server
         #region Data
         public enum RequestsID
         {
-            AUTH = 1, SYNC = 2, BUILD = 3, REPLACE = 4, COLLECT = 5, PREUPGRADE = 6, UPGRADE = 7, INSTANTBUILD = 8, TRAIN = 9, CANCELTRAIN = 10, BATTLEFIND = 11, BATTLESTART = 12, BATTLEFRAME = 13, BATTLEEND = 14, OPENCLAN = 15, GETCLANS = 16, JOINCLAN = 17, LEAVECLAN = 18, EDITCLAN = 19, CREATECLAN = 20, OPENWAR = 21, STARTWAR = 22, CANCELWAR = 23, WARSTARTED = 24, WARATTACK = 25, WARREPORTLIST = 26, WARREPORT = 27, JOINREQUESTS = 28, JOINRESPONSE = 29, GETCHATS = 30, SENDCHAT = 31, SENDCODE = 32, CONFIRMCODE = 33, EMAILCODE = 34, EMAILCONFIRM = 35, LOGOUT = 36, KICKMEMBER = 37, BREW = 38, CANCELBREW = 39, RESEARCH = 40, PROMOTEMEMBER = 41, DEMOTEMEMBER = 42, SCOUT = 43, BUYSHIELD = 44, BUYGEM = 45, BUYGOLD = 46, REPORTCHAT = 47, PLAYERSRANK = 48, BOOST = 49, BUYRESOURCE = 50, BATTLEREPORTS = 51, BATTLEREPORT = 52, RENAME = 53, PREAUTH = 54
+            AUTH = 1, 
+            SYNC = 2, 
+            BUILD = 3, 
+            REPLACE = 4, 
+            COLLECT = 5, 
+            PREUPGRADE = 6, 
+            UPGRADE = 7,
+            INSTANTBUILD = 8, 
+            TRAIN = 9, 
+            CANCELTRAIN = 10, 
+            BATTLEFIND = 11, 
+            BATTLESTART = 12, 
+            BATTLEFRAME = 13, 
+            BATTLEEND = 14, 
+            OPENCLAN = 15, 
+            GETCLANS = 16, 
+            JOINCLAN = 17, 
+            LEAVECLAN = 18, 
+            EDITCLAN = 19, 
+            CREATECLAN = 20, 
+            OPENWAR = 21, 
+            STARTWAR = 22, 
+            CANCELWAR = 23, 
+            WARSTARTED = 24, 
+            WARATTACK = 25, 
+            WARREPORTLIST = 26, 
+            WARREPORT = 27, 
+            JOINREQUESTS = 28, 
+            JOINRESPONSE = 29, 
+            GETCHATS = 30, 
+            SENDCHAT = 31, 
+            SENDCODE = 32, 
+            CONFIRMCODE = 33, 
+            EMAILCODE = 34, 
+            EMAILCONFIRM = 35, 
+            LOGOUT = 36, 
+            KICKMEMBER = 37, 
+            BREW = 38, 
+            CANCELBREW = 39, 
+            RESEARCH = 40, 
+            PROMOTEMEMBER = 41, 
+            DEMOTEMEMBER = 42, 
+            SCOUT = 43, 
+            BUYSHIELD = 44, 
+            BUYGEM = 45, 
+            BUYGOLD = 46, 
+            REPORTCHAT = 47, 
+            PLAYERSRANK = 48, 
+            BOOST = 49, 
+            BUYRESOURCE = 50, 
+            
+            BATTLEREPORTS = 51, 
+            BATTLEREPORT = 52, 
+            RENAME = 53, 
+            PREAUTH = 54,
+            GET_LAND = 55,
+            GET_MAP = 56,
+            GET_GUILD = 57,
+            GET_ALL_GUILDS = 58,
+            GET_FORUM_POSTS = 59,
+            GET_FORUM_POST = 60,
         }
 
         public static void ReceivedPacket(int clientID, Packet packet)
@@ -112,6 +172,8 @@ namespace Memewars.RealtimeNetworking.Server
             try
             {
                 int id = packet.ReadInt();
+                long account_id;
+                Player account;
 
                 // authentication
                 string address = packet.ReadString();
@@ -300,6 +362,93 @@ namespace Memewars.RealtimeNetworking.Server
                     case RequestsID.RENAME:
                         string nm = packet.ReadString();
                         Account.UpdateName(clientID, nm);
+                        break;
+
+                    // land
+                    case RequestsID.GET_LAND:
+                        retPacket.Write((int)RequestsID.GET_LAND);
+                        var land_id = retPacket.ReadLong();
+                        var land = new Land(land_id);
+                        string landData = Data.Serialize(land);
+                        byte[] landBytes = Data.Compress(landData);
+                        retPacket.Write(1);
+                        retPacket.Write(landBytes.Length);
+                        retPacket.Write(landBytes);
+                        Sender.TCP_Send(id, retPacket);
+                        break;
+                    case RequestsID.GET_MAP:
+                        retPacket.Write((int)RequestsID.GET_MAP);
+                        var lands = Land.All();
+                        string landsData = Data.Serialize(lands);
+                        byte[] landsBytes = Data.Compress(landsData);
+                        retPacket.Write(1);
+                        retPacket.Write(landsBytes.Length);
+                        retPacket.Write(landsBytes);
+                        Sender.TCP_Send(id, retPacket);
+                        break;
+
+                    // guild
+                    case RequestsID.GET_GUILD:
+                        retPacket.Write((int)RequestsID.GET_GUILD);
+                        var guild_id = retPacket.ReadLong();
+                        var guild = new Guild(guild_id);
+                        string guildData = Data.Serialize(guild);
+                        byte[] guildBytes = Data.Compress(guildData);
+                        retPacket.Write(1);
+                        retPacket.Write(guildBytes.Length);
+                        retPacket.Write(guildBytes);
+                        Sender.TCP_Send(id, retPacket);
+                        break;
+                    case RequestsID.GET_ALL_GUILDS:
+                        retPacket.Write((int)RequestsID.GET_ALL_GUILDS);
+                        var guilds = Guild.All();
+                        string guildsData = Data.Serialize(guilds);
+                        byte[] guildsBytes = Data.Compress(guildsData);
+                        retPacket.Write(1);
+                        retPacket.Write(guildsBytes.Length);
+                        retPacket.Write(guildsBytes);
+                        Sender.TCP_Send(id, retPacket);
+                        break;
+
+                    // forums
+                    case RequestsID.GET_FORUM_POSTS:
+                        retPacket.Write((int)RequestsID.GET_FORUM_POSTS);
+                        account_id = retPacket.ReadLong();
+                        account = Account.Get(account_id);
+
+                        if(account.guild_id == 0) {
+                            retPacket.Write(0);
+                            Sender.TCP_Send(id, retPacket);
+                            break;
+                        }
+
+                        var forumPosts = ForumPost.All(account.guild_id);
+                        string forumPostData = Data.Serialize(forumPosts);
+                        byte[] forumPostBytes = Data.Compress(forumPostData);
+                        retPacket.Write(1);
+                        retPacket.Write(forumPostBytes.Length);
+                        retPacket.Write(forumPostBytes);
+                        Sender.TCP_Send(id, retPacket);
+                        break;
+                    case RequestsID.GET_FORUM_POST:
+                        retPacket.Write((int)RequestsID.GET_FORUM_POST);
+                        var forum_post_id = retPacket.ReadLong();
+                        account_id = retPacket.ReadLong();
+                        account = Account.Get(account_id);
+                        var post = new ForumPost(forum_post_id);
+
+                        if(post.GuildId != account.guild_id) {
+                            retPacket.Write(0);
+                            Sender.TCP_Send(id, retPacket);
+                            break;
+                        }
+
+                        string postData = Data.Serialize(post);
+                        byte[] postBytes = Data.Compress(postData);
+                        retPacket.Write(1);
+                        retPacket.Write(postBytes.Length);
+                        retPacket.Write(postBytes);
+                        Sender.TCP_Send(id, retPacket);
                         break;
                 }
             }

@@ -5,6 +5,7 @@ using Memewars.RealtimeNetworking.Server;
 namespace Models {
     public class ForumPost {
         public long Id { get; set; }
+        public long GuildId { get; set; }
         public string Title { get; set; }
         public string Description { get; set; }
         public string Content { get; set; }
@@ -21,6 +22,7 @@ namespace Models {
             string query = string.Format("select * from forum_posts where id = {0}", id);
             var ret = Database.ExecuteForSingleResult(query);
             if(ret != null ){
+                GuildId = long.Parse(ret["guild_id"]);
                 Title = ret["title"];
                 Description = ret["description"];
                 Content = ret["content"];
@@ -42,6 +44,7 @@ namespace Models {
             foreach(var res in ret) {
                 var post = new ForumPost { 
                     Id = long.Parse(res["id"]),
+                    GuildId = long.Parse(res["guild_id"]),
                     Title = res["title"],
                     Description = res["description"],
                     Content = res["content"],

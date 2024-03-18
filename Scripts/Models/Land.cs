@@ -15,6 +15,7 @@ namespace Models {
         public long GuildId { get; set; }
         public bool IsBooked { get; set; } // for land sale
         public DateTime MintedAt { get; set; }
+        public int CitizenCount { get; set; }
         public List<LandCitizen> Citizens { get; set; }
         
         // maybe add resources here
@@ -42,7 +43,37 @@ namespace Models {
                 MintedAt = DateTime.Parse(ret["minted_date"]);
 
                 Citizens = LandCitizen.All(Id);
+                CitizenCount = Citizens.Count;
             }
+        }
+
+        // without citizen details
+        public static List<Land> All() {
+            string query = string.Format("select l.*, count(distinct lc.id)::int as citizen_count from lands l join land_citizens lc on lc.land_id = l.id");
+            var ret = Database.ExecuteForResults(query);
+            var lands = new List<Land>();
+            if(ret == null) {
+                return lands;
+            }
+
+            foreach(var res in ret) {
+                lands.Add(new Land() {
+                    Id = long.Parse(res["id"]),
+                    MintAddress = res["mint_address"],
+                    X = int.Parse(res["X"]),
+                    Y = int.Parse(res["Y"]),
+                    Level = int.Parse(res["Level"]),
+                    CitizenCap = int.Parse(res["citizen_cap"]),
+                    GemsPerBlock = float.Parse(res["gems_per_block"]),
+                    OwnerAddress = res["owner_address"],
+                    GuildId = int.Parse(res["guild_id"]),
+                    IsBooked = bool.Parse(res["is_booked"]),
+                    MintedAt = DateTime.Parse(res["minted_at"]),
+                    CitizenCount = int.Parse(res["citizen_count"]),
+                });
+            }
+
+            return lands;
         }
 
         public void Book(long id) {
@@ -74,7 +105,7 @@ namespace Models {
             if(land.CitizenCap <= land.Citizens.Count) {
                 throw new Exception("Maximum citizen size reached");
             }
-            
+
             string query = string.Format("insert into land_citizen (land_id, account_id) values ({0},{1})", land_id, account_id);
             Database.ExecuteNonQuery(query);
         }
