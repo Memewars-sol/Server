@@ -46,11 +46,6 @@ namespace Models {
             return guilds;
         }
 
-        // maybe need to preseed guilds
-        public static Guild Get(long id) {
-            return new Guild(id);
-        }
-
         public static void Join(long id, long account_id) {
             // guilds follow the account not the address connected
             string query = string.Format("update accounts set guild_id = {0} where id = {1}", id, account_id);
