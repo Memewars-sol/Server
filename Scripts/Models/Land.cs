@@ -8,6 +8,9 @@ namespace Models {
         public string MintAddress { get; set; }
         public int X { get; set; }
         public int Y { get; set; }
+        public int Level { get; set; }
+        public int CitizenCap { get; set; }
+        public float GemsPerBlock { get; set; } // gems per block
         public string OwnerAddress { get; set; }
         public long GuildId { get; set; }
         public bool IsBooked { get; set; } // for land sale
@@ -30,6 +33,9 @@ namespace Models {
                 MintAddress = ret["mint_address"];
                 X = int.Parse(ret["x"]);
                 Y = int.Parse(ret["y"]);
+                Level = int.Parse(ret["level"]);
+                CitizenCap = int.Parse(ret["citizen_cap"]);
+                GemsPerBlock = float.Parse(ret["gems_per_block"]);
                 OwnerAddress = ret["owner_address"];
                 GuildId = long.Parse(ret["guild_id"]);
                 IsBooked = bool.Parse(ret["is_booked"]);

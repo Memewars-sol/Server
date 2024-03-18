@@ -46,6 +46,7 @@ namespace Models {
             return guilds;
         }
 
+        // maybe need to preseed guilds
         public static Guild Get(long id) {
             return new Guild(id);
         }
