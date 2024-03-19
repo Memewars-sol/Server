@@ -38,9 +38,9 @@ namespace Models {
                 CitizenCap = int.Parse(ret["citizen_cap"]);
                 GemsPerBlock = float.Parse(ret["gems_per_block"]);
                 OwnerAddress = ret["owner_address"];
-                GuildId = long.Parse(ret["guild_id"]);
+                GuildId = string.IsNullOrEmpty(ret["guild_id"])? 0 : long.Parse(ret["guild_id"]);
                 IsBooked = bool.Parse(ret["is_booked"]);
-                MintedAt = DateTime.Parse(ret["minted_date"]);
+                MintedAt = string.IsNullOrEmpty(ret["minted_at"])? DateTime.MinValue : DateTime.Parse(ret["minted_at"]);
 
                 Citizens = LandCitizen.All(Id);
                 CitizenCount = Citizens.Count;
@@ -49,7 +49,7 @@ namespace Models {
 
         // without citizen details
         public static List<Land> All() {
-            string query = string.Format("select l.*, count(distinct lc.id)::int as citizen_count from lands l join land_citizens lc on lc.land_id = l.id");
+            string query = string.Format("select l.*, count(distinct lc.id)::int as citizen_count from lands l left join land_citizens lc on lc.land_id = l.id group by l.id");
             var ret = Database.ExecuteForResults(query);
             var lands = new List<Land>();
             if(ret == null) {
@@ -60,15 +60,15 @@ namespace Models {
                 lands.Add(new Land() {
                     Id = long.Parse(res["id"]),
                     MintAddress = res["mint_address"],
-                    X = int.Parse(res["X"]),
-                    Y = int.Parse(res["Y"]),
-                    Level = int.Parse(res["Level"]),
+                    X = int.Parse(res["x"]),
+                    Y = int.Parse(res["y"]),
+                    Level = int.Parse(res["level"]),
                     CitizenCap = int.Parse(res["citizen_cap"]),
                     GemsPerBlock = float.Parse(res["gems_per_block"]),
                     OwnerAddress = res["owner_address"],
-                    GuildId = int.Parse(res["guild_id"]),
+                    GuildId = string.IsNullOrEmpty(res["guild_id"])? 0 : long.Parse(res["guild_id"]),
                     IsBooked = bool.Parse(res["is_booked"]),
-                    MintedAt = DateTime.Parse(res["minted_at"]),
+                    MintedAt = string.IsNullOrEmpty(res["minted_at"])? DateTime.MinValue : DateTime.Parse(res["minted_at"]),
                     CitizenCount = int.Parse(res["citizen_count"]),
                 });
             }

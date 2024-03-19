@@ -285,6 +285,68 @@ namespace Models {
             return data;
         }
     
+        public static Player GetByAddress(string address) {
+            string query = string.Format(@"
+                SELECT 
+                    accounts.id, 
+                    accounts.name, 
+                    gems, 
+                    trophies, 
+                    banned, 
+                    shield, 
+                    level, 
+                    xp, 
+                    clan_join_timer, 
+                    clan_id, 
+                    clan_rank, 
+                    war_id, 
+                    NOW() at time zone 'utc' AS now_time, 
+                    email, 
+                    map_layout, 
+                    shld_cldn_1, 
+                    shld_cldn_2, 
+                    shld_cldn_3,
+                    address,
+                    guild_id,
+                    guilds.logo as guild_logo,
+                    guilds.name as guild_name
+                FROM accounts 
+                left join guilds
+                on guilds.id = accounts.guild_id
+                WHERE accounts.address = '{0}';", address);
+                
+            Player data = new();
+            var ret = Database.ExecuteForSingleResult(query);
+            if (ret != null)
+            {
+                data.id = long.Parse(ret["id"]);
+                data.name = ret["name"];
+                data.email = ret["email"];
+                _ = int.TryParse(ret["gems"], out data.gems);
+                _ = int.TryParse(ret["trophies"], out data.trophies);
+                _ = int.TryParse(ret["banned"], out int ban);
+                data.banned = ban > 0;
+                _ = DateTime.TryParse(ret["now_time"], out data.nowTime);
+                _ = DateTime.TryParse(ret["shield"], out data.shield);
+                _ = DateTime.TryParse(ret["clan_join_timer"], out data.clanTimer);
+                _ = DateTime.TryParse(ret["shld_cldn_1"], out data.shield1);
+                _ = DateTime.TryParse(ret["shld_cldn_2"], out data.shield2);
+                _ = DateTime.TryParse(ret["shld_cldn_3"], out data.shield3);
+                _ = int.TryParse(ret["level"], out data.level);
+                _ = int.TryParse(ret["xp"], out data.xp);
+                _ = long.TryParse(ret["clan_id"], out data.clanID);
+                _ = int.TryParse(ret["clan_rank"], out data.clanRank);
+                _ = long.TryParse(ret["war_id"], out data.warID);
+                _ = int.TryParse(ret["map_layout"], out data.layout);
+                _ = long.TryParse(ret["guild_id"], out data.guild_id);
+                data.address = string.IsNullOrEmpty(ret["address"])? "" : (string) ret["address"];
+                data.guild_logo = string.IsNullOrEmpty(ret["guild_logo"])? "" : (string) ret["guild_logo"];
+                data.guild_name = string.IsNullOrEmpty(ret["guild_name"])? "" : (string) ret["guild_name"];
+                
+            }
+            return data;
+        }
+    
         public static List<Building> GetBuildings(long id) {
 
             List<Building> data = new List<Building>();

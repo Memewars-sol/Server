@@ -182,7 +182,6 @@ namespace Memewars.RealtimeNetworking.Server
             try
             {
                 int id = packet.ReadInt();
-                long account_id;
                 long guild_id;
                 long forum_post_id;
                 Guild guild;
@@ -389,8 +388,9 @@ namespace Memewars.RealtimeNetworking.Server
                         retPacket.Write(1);
                         retPacket.Write(landBytes.Length);
                         retPacket.Write(landBytes);
-                        Sender.TCP_Send(id, retPacket);
+                        Sender.TCP_Send(clientID, retPacket);
                         break;
+
                     case RequestsID.GET_MAP:
                         retPacket.Write((int)RequestsID.GET_MAP);
                         var lands = Land.All();
@@ -399,7 +399,25 @@ namespace Memewars.RealtimeNetworking.Server
                         retPacket.Write(1);
                         retPacket.Write(landsBytes.Length);
                         retPacket.Write(landsBytes);
-                        Sender.TCP_Send(id, retPacket);
+                        Sender.TCP_Send(clientID, retPacket);
+                        break;
+
+                    case RequestsID.BUY_LAND:
+                        retPacket.Write((int)RequestsID.BUY_LAND);
+                        account = Account.GetByAddress(address);
+                        land_id = packet.ReadLong();
+                        land = new Land(land_id);
+
+                        if(land.IsBooked) {
+                            // already booked
+                            retPacket.Write(0);
+                            Sender.TCP_Send(clientID, retPacket);
+                            break;
+                        }
+
+                        land.Book(account.id);
+                        retPacket.Write(1);
+                        Sender.TCP_Send(clientID, retPacket);
                         break;
 
                     // guild
@@ -412,7 +430,7 @@ namespace Memewars.RealtimeNetworking.Server
                         retPacket.Write(1);
                         retPacket.Write(guildBytes.Length);
                         retPacket.Write(guildBytes);
-                        Sender.TCP_Send(id, retPacket);
+                        Sender.TCP_Send(clientID, retPacket);
                         break;
                     case RequestsID.GET_ALL_GUILDS:
                         retPacket.Write((int)RequestsID.GET_ALL_GUILDS);
@@ -422,18 +440,43 @@ namespace Memewars.RealtimeNetworking.Server
                         retPacket.Write(1);
                         retPacket.Write(guildsBytes.Length);
                         retPacket.Write(guildsBytes);
-                        Sender.TCP_Send(id, retPacket);
+                        Sender.TCP_Send(clientID, retPacket);
+                        break;
+                        
+                    case RequestsID.JOIN_GUILD:
+                        retPacket.Write((int)RequestsID.JOIN_GUILD);
+                        guild_id = packet.ReadLong();
+                        account = Account.GetByAddress(address);
+                        Guild.Join(guild_id, account.id);
+                        retPacket.Write(1);
+                        Sender.TCP_Send(clientID, retPacket);
+                        break;
+
+                    case RequestsID.CHANGE_GUILD:
+                        retPacket.Write((int)RequestsID.CHANGE_GUILD);
+                        guild_id = packet.ReadLong();
+                        account = Account.GetByAddress(address);
+                        Guild.Join(guild_id, account.id);
+                        retPacket.Write(1);
+                        Sender.TCP_Send(clientID, retPacket);
+                        break;
+
+                    case RequestsID.EXIT_GUILD:
+                        retPacket.Write((int)RequestsID.JOIN_GUILD);
+                        account = Account.GetByAddress(address);
+                        Guild.Exit(account.id);
+                        retPacket.Write(1);
+                        Sender.TCP_Send(clientID, retPacket);
                         break;
 
                     // forums
                     case RequestsID.GET_FORUM_POSTS:
                         retPacket.Write((int)RequestsID.GET_FORUM_POSTS);
-                        account_id = packet.ReadLong();
-                        account = Account.Get(account_id);
+                        account = Account.GetByAddress(address);
 
                         if(account.guild_id == 0) {
                             retPacket.Write(0);
-                            Sender.TCP_Send(id, retPacket);
+                            Sender.TCP_Send(clientID, retPacket);
                             break;
                         }
 
@@ -443,18 +486,18 @@ namespace Memewars.RealtimeNetworking.Server
                         retPacket.Write(1);
                         retPacket.Write(forumPostBytes.Length);
                         retPacket.Write(forumPostBytes);
-                        Sender.TCP_Send(id, retPacket);
+                        Sender.TCP_Send(clientID, retPacket);
                         break;
+
                     case RequestsID.GET_FORUM_POST:
                         retPacket.Write((int)RequestsID.GET_FORUM_POST);
                         forum_post_id = packet.ReadLong();
-                        account_id = packet.ReadLong();
-                        account = Account.Get(account_id);
+                        account = Account.GetByAddress(address);
                         var post = new ForumPost(forum_post_id);
 
                         if(post.GuildId != account.guild_id) {
                             retPacket.Write(0);
-                            Sender.TCP_Send(id, retPacket);
+                            Sender.TCP_Send(clientID, retPacket);
                             break;
                         }
 
@@ -463,35 +506,12 @@ namespace Memewars.RealtimeNetworking.Server
                         retPacket.Write(1);
                         retPacket.Write(postBytes.Length);
                         retPacket.Write(postBytes);
-                        Sender.TCP_Send(id, retPacket);
+                        Sender.TCP_Send(clientID, retPacket);
                         break;
-                    case RequestsID.JOIN_GUILD:
-                        retPacket.Write((int)RequestsID.JOIN_GUILD);
-                        guild_id = packet.ReadLong();
-                        account_id = packet.ReadLong();
-                        Guild.Join(guild_id, account_id);
-                        retPacket.Write(1);
-                        Sender.TCP_Send(id, retPacket);
-                        break;
-                    case RequestsID.CHANGE_GUILD:
-                        retPacket.Write((int)RequestsID.CHANGE_GUILD);
-                        guild_id = packet.ReadLong();
-                        account_id = packet.ReadLong();
-                        Guild.Join(guild_id, account_id);
-                        retPacket.Write(1);
-                        Sender.TCP_Send(id, retPacket);
-                        break;
-                    case RequestsID.EXIT_GUILD:
-                        retPacket.Write((int)RequestsID.JOIN_GUILD);
-                        account_id = packet.ReadLong();
-                        Guild.Exit(account_id);
-                        retPacket.Write(1);
-                        Sender.TCP_Send(id, retPacket);
-                        break;
+
                     case RequestsID.CREATE_FORUM_POST:
                         retPacket.Write((int)RequestsID.CREATE_FORUM_POST);
-                        account_id = packet.ReadLong();
-                        account = Account.Get(account_id);
+                        account = Account.GetByAddress(address);
                         string title = packet.ReadString();
                         string description = packet.ReadString();
                         string content = packet.ReadString();
@@ -504,19 +524,19 @@ namespace Memewars.RealtimeNetworking.Server
                         };
                         post.Create();
                         retPacket.Write(1);
-                        Sender.TCP_Send(id, retPacket);
+                        Sender.TCP_Send(clientID, retPacket);
                         break;
+
                     case RequestsID.CREATE_FORUM_COMMENT:
                         retPacket.Write((int)RequestsID.CREATE_FORUM_COMMENT);
-                        account_id = packet.ReadLong();
-                        account = Account.Get(account_id);
+                        account = Account.GetByAddress(address);
                         forum_post_id = packet.ReadLong();
                         forumPost = new ForumPost(forum_post_id);
 
                         if(forumPost.CreatedBy == "" || forumPost.GuildId != account.guild_id) {
                             // not created yet or not accessible
                             retPacket.Write(0);
-                            Sender.TCP_Send(id, retPacket);
+                            Sender.TCP_Send(clientID, retPacket);
                             break;
                         }
 
@@ -527,79 +547,61 @@ namespace Memewars.RealtimeNetworking.Server
                         };
                         forumComment.Create();
                         retPacket.Write(1);
-                        Sender.TCP_Send(id, retPacket);
+                        Sender.TCP_Send(clientID, retPacket);
                         break;
+
                     case RequestsID.DELETE_FORUM_COMMENT:
                         retPacket.Write((int)RequestsID.DELETE_FORUM_COMMENT);
-                        account_id = packet.ReadLong();
-                        account = Account.Get(account_id);
+                        account = Account.GetByAddress(address);
                         var forum_comment_id = packet.ReadLong();
                         forumComment = new ForumComment(forum_comment_id);
 
                         if(forumComment.CreatedBy != account.address) {
                             // unauthorized
                             retPacket.Write(0);
-                            Sender.TCP_Send(id, retPacket);
+                            Sender.TCP_Send(clientID, retPacket);
                             break;
                         }
 
                         forumComment.Delete();
                         retPacket.Write(1);
-                        Sender.TCP_Send(id, retPacket);
+                        Sender.TCP_Send(clientID, retPacket);
                         break;
+
                     case RequestsID.DELETE_FORUM_POST:
                         retPacket.Write((int)RequestsID.DELETE_FORUM_POST);
-                        account_id = packet.ReadLong();
-                        account = Account.Get(account_id);
+                        account = Account.GetByAddress(address);
                         forum_post_id = packet.ReadLong();
                         forumPost = new ForumPost(forum_post_id);
 
                         if(forumPost.CreatedBy != account.address) {
                             // unauthorized
                             retPacket.Write(0);
-                            Sender.TCP_Send(id, retPacket);
+                            Sender.TCP_Send(clientID, retPacket);
                             break;
                         }
 
                         forumPost.Delete();
                         retPacket.Write(1);
-                        Sender.TCP_Send(id, retPacket);
+                        Sender.TCP_Send(clientID, retPacket);
                         break;
+
                     case RequestsID.PUSH_FORUM_POST_TO_GOVERNANCE:
                         retPacket.Write((int)RequestsID.PUSH_FORUM_POST_TO_GOVERNANCE);
-                        account_id = packet.ReadLong();
-                        account = Account.Get(account_id);
+                        account = Account.GetByAddress(address);
                         forum_post_id = packet.ReadLong();
                         forumPost = new ForumPost(forum_post_id);
 
                         if(forumPost.CreatedBy == "" || forumPost.GuildId != account.guild_id) {
                             // not created yet or not accessible
                             retPacket.Write(0);
-                            Sender.TCP_Send(id, retPacket);
+                            Sender.TCP_Send(clientID, retPacket);
                             break;
                         }
 
                         forumPost.PushToGovernance();
                         retPacket.Write(1);
-                        Sender.TCP_Send(id, retPacket);
-                        break;
-                    case RequestsID.BUY_LAND:
-                        retPacket.Write((int)RequestsID.BUY_LAND);
-                        account_id = packet.ReadLong();
-                        account = Account.Get(account_id);
-                        land_id = packet.ReadLong();
-                        land = new Land(land_id);
-
-                        if(land.IsBooked) {
-                            // already booked
-                            retPacket.Write(0);
-                            Sender.TCP_Send(id, retPacket);
-                            break;
-                        }
-
-                        land.Book(account_id);
-                        retPacket.Write(1);
-                        Sender.TCP_Send(id, retPacket);
+                        Sender.TCP_Send(clientID, retPacket);
                         break;
                 }
             }
