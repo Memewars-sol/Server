@@ -60,7 +60,7 @@ namespace Models {
         }
 
         public void Create() {
-            string query = string.Format("insert into forum_posts (title, description, content, created_by) values '{0}', '{1}', '{2}', '{3}'", Title, Description, Content, CreatedBy);
+            string query = string.Format("insert into forum_posts (title, description, content, created_by) values ('{0}', '{1}', '{2}', '{3}')", Title, Description, Content, CreatedBy);
             Database.ExecuteNonQuery(query);
         }
 

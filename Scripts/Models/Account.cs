@@ -39,6 +39,7 @@ namespace Models {
         public DateTime shield1;
         public DateTime shield2;
         public DateTime shield3;
+        public string address { get; set; }
         public long guild_id;
         public string guild_name;
         public string guild_logo;
@@ -243,6 +244,7 @@ namespace Models {
                     shld_cldn_1, 
                     shld_cldn_2, 
                     shld_cldn_3,
+                    address,
                     guild_id,
                     guilds.logo as guild_logo,
                     guilds.name as guild_name
@@ -275,6 +277,7 @@ namespace Models {
                 _ = long.TryParse(ret["war_id"], out data.warID);
                 _ = int.TryParse(ret["map_layout"], out data.layout);
                 _ = long.TryParse(ret["guild_id"], out data.guild_id);
+                data.address = string.IsNullOrEmpty(ret["address"])? "" : (string) ret["address"];
                 data.guild_logo = string.IsNullOrEmpty(ret["guild_logo"])? "" : (string) ret["guild_logo"];
                 data.guild_name = string.IsNullOrEmpty(ret["guild_name"])? "" : (string) ret["guild_name"];
                 

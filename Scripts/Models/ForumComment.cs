@@ -48,6 +48,15 @@ namespace Models {
             return comments;
         }
 
+        public void Create() {
+            string query = string.Format("insert into forum_comments (forum_post_id, comment, created_by) values ({0}, '{1}', '{2}')", ForumPostId, Comment, CreatedBy);
+            Database.ExecuteNonQuery(query);
+        }
+
+        public void Delete() {
+            Delete(Id);
+        }
+
         public static void Delete(long id) {
             string query = string.Format("delete from forum_comments where id = {0}", id);
             Database.ExecuteNonQuery(query);

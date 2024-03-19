@@ -52,6 +52,12 @@ namespace Models {
             Database.ExecuteNonQuery(query);
         }
 
+        public static void Exit(long account_id) {
+            // guilds follow the account not the address connected
+            string query = string.Format("update accounts set guild_id = null where id = {0}", account_id);
+            Database.ExecuteNonQuery(query);
+        }
+
         public static List<ForumPost> GetForumPosts(long id) {
             return ForumPost.All(id);
         }
