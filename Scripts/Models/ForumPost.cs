@@ -12,6 +12,7 @@ namespace Models {
         public string VotingId { get; set; }
         public string CreatedBy { get; set; }
         public DateTime CreatedAt { get; set; }
+        public int CommentCount { get; set; }
         public List<ForumComment> Comments { get; set; }
 
         public ForumPost() {
@@ -31,11 +32,21 @@ namespace Models {
                 CreatedAt = DateTime.Parse(ret["created_at"]);
 
                 Comments = ForumComment.All(Id);
+                CommentCount = Comments.Count;
             }
         }
 
         public static List<ForumPost> All(long guild_id) {
-            string query = string.Format("select * from forum_posts where guild_id = {0}", guild_id);
+            string query = string.Format(@"
+                select 
+                    p.*, 
+                    count(distinct c.id) as comment_count 
+                from forum_posts p 
+                left join forum_comments c 
+                on c.forum_post_id = p.id 
+                where guild_id = {0} 
+                group by p.id 
+                order by p.id", guild_id);
             var posts = new List<ForumPost>();
             var ret = Database.ExecuteForResults(query);
             if(ret.Count == 0) {
@@ -51,16 +62,17 @@ namespace Models {
                     VotingId = res["voting_id"],
                     CreatedBy = res["created_by"],
                     CreatedAt = DateTime.Parse(res["created_at"]),
+                    CommentCount = int.Parse(res["comment_count"]),
                 };
 
                 posts.Add(post);
             }
 
-            return new List<ForumPost>();
+            return posts;
         }
 
         public void Create() {
-            string query = string.Format("insert into forum_posts (title, description, content, created_by) values ('{0}', '{1}', '{2}', '{3}')", Title, Description, Content, CreatedBy);
+            string query = string.Format("insert into forum_posts (title, description, content, created_by, guild_id) values ('{0}', '{1}', '{2}', '{3}', {4})", Title, Description, Content, CreatedBy, GuildId);
             Database.ExecuteNonQuery(query);
         }
 

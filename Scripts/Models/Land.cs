@@ -49,7 +49,15 @@ namespace Models {
 
         // without citizen details
         public static List<Land> All() {
-            string query = string.Format("select l.*, count(distinct lc.id)::int as citizen_count from lands l left join land_citizens lc on lc.land_id = l.id group by l.id");
+            string query = string.Format(@"
+                select 
+                    l.*, 
+                    count(distinct lc.id)::int as citizen_count 
+                from lands l 
+                left join land_citizens lc 
+                on lc.land_id = l.id 
+                group by l.id 
+                order by l.id");
             var ret = Database.ExecuteForResults(query);
             var lands = new List<Land>();
             if(ret == null) {
@@ -76,7 +84,7 @@ namespace Models {
             return lands;
         }
 
-        public void Book(long id) {
+        public void Book(string address) {
             if(IsBooked) {
                 throw new Exception("Land is already booked");
             }
@@ -84,7 +92,7 @@ namespace Models {
             if(!string.IsNullOrEmpty(OwnerAddress)) {
                 throw new Exception("Land is already minted");
             }
-            string query = string.Format("update lands set is_booked = true where id = {0}", id);
+            string query = string.Format("update lands set is_booked = true, owner_address = '{0}' where id = {1}", address, Id);
             Database.ExecuteNonQuery(query);
         }
 

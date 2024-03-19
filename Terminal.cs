@@ -404,7 +404,7 @@ namespace Memewars.RealtimeNetworking.Server
 
                     case RequestsID.BUY_LAND:
                         retPacket.Write((int)RequestsID.BUY_LAND);
-                        account = Account.GetByAddress(address);
+                        // account = Account.GetByAddress(address);
                         land_id = packet.ReadLong();
                         land = new Land(land_id);
 
@@ -415,7 +415,7 @@ namespace Memewars.RealtimeNetworking.Server
                             break;
                         }
 
-                        land.Book(account.id);
+                        land.Book(address);
                         retPacket.Write(1);
                         Sender.TCP_Send(clientID, retPacket);
                         break;
@@ -515,6 +515,12 @@ namespace Memewars.RealtimeNetworking.Server
                         string title = packet.ReadString();
                         string description = packet.ReadString();
                         string content = packet.ReadString();
+                        if(account.guild_id == 0) {
+                            // must join a guild
+                            retPacket.Write(0);
+                            Sender.TCP_Send(clientID, retPacket);
+                            return;
+                        }
                         post = new ForumPost() {
                             Title = title,
                             Description = description,
@@ -542,6 +548,7 @@ namespace Memewars.RealtimeNetworking.Server
 
                         string comment = packet.ReadString();
                         forumComment = new ForumComment() {
+                            ForumPostId = forum_post_id,
                             Comment = comment,
                             CreatedBy = account.address,
                         };
@@ -574,7 +581,7 @@ namespace Memewars.RealtimeNetworking.Server
                         forum_post_id = packet.ReadLong();
                         forumPost = new ForumPost(forum_post_id);
 
-                        if(forumPost.CreatedBy != account.address) {
+                        if(forumPost.CreatedBy != account.address || forumPost.GuildId != account.guild_id) {
                             // unauthorized
                             retPacket.Write(0);
                             Sender.TCP_Send(clientID, retPacket);
@@ -592,7 +599,7 @@ namespace Memewars.RealtimeNetworking.Server
                         forum_post_id = packet.ReadLong();
                         forumPost = new ForumPost(forum_post_id);
 
-                        if(forumPost.CreatedBy == "" || forumPost.GuildId != account.guild_id) {
+                        if(forumPost.CreatedBy != account.address || forumPost.GuildId != account.guild_id) {
                             // not created yet or not accessible
                             retPacket.Write(0);
                             Sender.TCP_Send(clientID, retPacket);

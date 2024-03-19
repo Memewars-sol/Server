@@ -28,7 +28,7 @@ namespace Models {
 
         public static List<ForumComment> All(long forum_post_id) {
             var comments = new List<ForumComment>();
-            string query = string.Format("select * from forum_comments where forum_post_id = {0}", forum_post_id);
+            string query = string.Format("select * from forum_comments where forum_post_id = {0} order by id", forum_post_id);
             var ret = Database.ExecuteForResults(query);
             if(ret.Count == 0) {
                 return comments;

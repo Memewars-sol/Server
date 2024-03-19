@@ -348,7 +348,7 @@ namespace Memewars.RealtimeNetworking.Server
         }
         public static T CloneClass<T>(this T target)
         {
-            return Desrialize<T>(Serialize<T>(target));
+            return Deserialize<T>(Serialize<T>(target));
         }
 
         public static string Serialize<T>(this T target)
@@ -359,7 +359,7 @@ namespace Memewars.RealtimeNetworking.Server
             return writer.ToString();
         }
 
-        public static T Desrialize<T>(this string target)
+        public static T Deserialize<T>(this string target)
         {
             XmlSerializer xml = new XmlSerializer(typeof(T));
             StringReader reader = new StringReader(target);

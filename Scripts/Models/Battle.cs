@@ -1890,7 +1890,7 @@ namespace Models
             }
 
             string data = Data.Decompress(File.ReadAllBytes(path));
-            report = Data.Desrialize<BattleReport>(data);
+            report = Data.Deserialize<BattleReport>(data);
             return report;
         }
 
